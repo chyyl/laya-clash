@@ -102,7 +102,7 @@ const PAGES = [
     html: `
       <p>把对手的生命打到 0 即可获胜。你与对手会自动面对面，专注距离与时机的博弈。</p>
       <div class="tut-grid">
-        <div class="tut-cell"><b>移动</b><span><kbd>A</kbd><kbd>D</kbd> 或方向键，向左右走位</span></div>
+        <div class="tut-cell"><b>移动</b><span><kbd>A</kbd><kbd>D</kbd> 走位，<kbd>W</kbd> 起跳躲招（空中跳过地面攻击）</span></div>
         <div class="tut-cell"><b>轻击</b><span><kbd>J</kbd>（或鼠标左键），快速三段连招</span></div>
         <div class="tut-cell"><b>重击</b><span><kbd>K</kbd>，高伤害、破防、击倒，但起手慢</span></div>
         <div class="tut-cell"><b>格挡</b><span>按住 <kbd>L</kbd> 减伤；按下瞬间 0.15 秒内是完美弹反</span></div>
@@ -115,7 +115,7 @@ const PAGES = [
     html: `
       <ul>
         <li>屏幕左半区按住拖动：动态摇杆控制走位，松手即停。</li>
-        <li>右下按钮组：<b>拳</b> 轻击连招 · <b>重</b> 重击 · <b>防</b> 按住格挡、点按弹反。</li>
+        <li>右下按钮组：<b>拳</b> 轻击连招 · <b>重</b> 重击 · <b>防</b> 按住格挡、点按弹反 · <b>跳</b> 起跳躲招。</li>
         <li><b>冲</b> 冲刺带无敌帧；<b>疾风</b> 与 <b>干扰</b> 两枚技能按钮带冷却显示。</li>
         <li>横屏体验更佳；可在设置里调整触屏按钮的显示方式。</li>
       </ul>
@@ -128,7 +128,7 @@ const PAGES = [
         <div class="tut-cell"><b>连招</b><span>轻击命中后 0.55 秒内再按，进入下一段；第三段带击退</span></div>
         <div class="tut-cell"><b>弹反</b><span>攻击贴身的瞬间按下格挡：对手硬直 0.8 秒，免费连一套</span></div>
         <div class="tut-cell"><b>破防</b><span>格挡消耗格挡值，重击与疾风削减极快；归零后硬直 1 秒</span></div>
-        <div class="tut-cell"><b>闪避</b><span>冲刺前 0.13 秒无敌，用来穿过重击与连招</span></div>
+        <div class="tut-cell"><b>闪避</b><span>冲刺前 0.13 秒无敌；<kbd>W</kbd> 起跳可整段跨过地面攻击</span></div>
         <div class="tut-cell"><b>倒地</b><span>被重击会击倒，起身自带 0.25 秒无敌，别急着压起身</span></div>
         <div class="tut-cell"><b>贪刀惩罚</b><span>收招硬直是最危险的空隙，命中就走或准备接弹反</span></div>
       </div>`,

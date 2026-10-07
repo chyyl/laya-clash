@@ -43,6 +43,7 @@ export class Battle {
     this.scale = 1;
     this.combo = { n: 0, t: 0, peak: 0 };
     this.dmgDealt = 0;
+    this.crowdHeat = 0;                  // 观众热度 0..1：重击/弹反点燃，随时间消退
     this.clock = 0;
     this.ann = { text: 'READY', cls: '', until: 1.0 };
     this.result = null;
@@ -56,6 +57,7 @@ export class Battle {
 
   update(dt, input) {
     this.clock += dt;
+    this.crowdHeat = Math.max(0, this.crowdHeat - 0.14 * dt);
     if (this.ann && this.clock > this.ann.until) this.ann = null;
 
     // 顿帧：世界冻结，特效（震屏）照走
@@ -109,6 +111,11 @@ export class Battle {
   _moveDead(f, dt) {
     if (!f.alive) {
       f.t += dt;
+      if (f.y > 0 || f.vy !== 0) {                    // KO 在空中也要摔下来
+        f.vy -= BASE.jump.gravity * dt;
+        f.y += f.vy * dt;
+        if (f.y <= 0) { f.y = 0; f.vy = 0; }
+      }
       f.vx *= (1 - 4 * dt);
       f.x += f.vx * dt;
       this._clamp(f);
@@ -119,7 +126,8 @@ export class Battle {
     const a = this.player, b = this.foe;
     const min = BASE.bodyR * 2 - 6;
     const d = b.x - a.x;
-    if (Math.abs(d) < min && a.alive && b.alive) {
+    // 一方跳高时允许直接跨过对手（空越换位）
+    if (Math.abs(d) < min && a.alive && b.alive && a.y < 60 && b.y < 60) {
       const push = (min - Math.abs(d)) / 2 * (d >= 0 ? 1 : -1);
       a.x -= push; b.x += push;
     }
@@ -147,6 +155,14 @@ export class Battle {
         AudioFX.play('dash');
         fx.dust(e.x, ARENA.GROUND, 6);
         break;
+      case 'jump':
+        AudioFX.play('jump');
+        fx.dust(e.x, ARENA.GROUND, 5);
+        break;
+      case 'land':
+        AudioFX.play('land');
+        fx.dust(e.x, ARENA.GROUND, 8);
+        break;
       case 'ghost':
         fx.trail(e.x, owner.color);
         break;
@@ -158,12 +174,19 @@ export class Battle {
         if (e.blocked) fx.ring(e.x, 520, 46, '#b99cff', 0.3);
         const col = e.crit ? '#ffd23f' : (e.dmg >= 14 ? '#ff5f6d' : '#eef2ff');
         fx.text(e.x, 486, (e.crit ? '' : '') + Math.round(e.dmg) + (e.crit ? '!' : ''), col, e.crit ? 34 : 26);
+        if (!e.blocked) this.crowdHeat = Math.min(1, this.crowdHeat + (e.kind === 'heavy' ? 0.5 : 0.26) + (e.crit ? 0.12 : 0));
+        if (e.kind === 'heavy' && !e.blocked) {
+          fx.comic(e.x + e.attacker.facing * 40, 452, ['哐!', '嘭!', '砰!'][(Math.random() * 3) | 0], '#ff5f6d', 32);
+        }
         if (e.attacker.isPlayer && !e.blocked) {
           this.combo.n++;
           this.combo.t = BASE.comboReset;
           this.combo.peak = Math.max(this.combo.peak, this.combo.n);
           this.dmgDealt += e.dmg;
           AudioFX.play('hitConfirm');
+          // 连击里程碑：网络热梗弹幕
+          const milestone = { 5: '666!', 9: '起飞!', 13: '天花板!', 17: '不是人!' };
+          if (milestone[this.combo.n]) fx.comic(e.x, 430, milestone[this.combo.n], '#ffd23f', 34);
         }
         break;
       }
@@ -174,21 +197,26 @@ export class Battle {
         break;
       case 'parry':
         AudioFX.play('parry');
+        AudioFX.play('cheer');
         fx.addHitstop(0.12);
         fx.addShake(10);
         fx.ring(e.x, 520, 90, '#ffffff', 0.4);
         fx.spark(e.x, 520, 0, '#ffffff', 16, 460);
-        fx.text(e.x, 470, '弹反!', '#ffffff', 30);
+        fx.comic(e.x, 466, '弹反!!', '#ffffff', 36);
+        this.crowdHeat = Math.min(1, this.crowdHeat + 0.55);
         break;
       case 'guardbreak':
         AudioFX.play('guardBreak');
+        AudioFX.play('cheer');
         fx.addHitstop(0.1);
         fx.addShake(11);
         fx.ring(e.x, 520, 80, '#ffd23f', 0.4);
-        fx.text(e.x, 466, '破防!', '#ffd23f', 30);
+        fx.comic(e.x, 462, '破防!', '#ffd23f', 34);
+        this.crowdHeat = Math.min(1, this.crowdHeat + 0.55);
         break;
       case 'evade':
-        fx.text(e.x, 480, '闪避', '#8b93ad', 20);
+        if (e.jump) fx.text(e.x, Math.max(420, e.y - 26), '跳开了!', '#3df2ff', 21);
+        else fx.text(e.x, 480, '闪避', '#8b93ad', 20);
         break;
       case 'gale':
         AudioFX.play('gale');
@@ -203,12 +231,15 @@ export class Battle {
         break;
       case 'ko': {
         AudioFX.play('ko');
+        AudioFX.play('cheer');
         this.phase = 'ko';
         this.pt = 0;
         this.scale = BASE.koSlowmo;
         fx.addShake(16);
         fx.addHitstop(0.14);
         fx.spark(e.x, 520, 0, '#ffd23f', 26, 560);
+        fx.comic(e.x, 440, 'KO!!', '#ffd23f', 44);
+        this.crowdHeat = 1;
         this.setAnnounce('K.O.', 'ko', 9);
         this.koLoser = e.loser;
         break;
@@ -248,11 +279,12 @@ export class Battle {
     const [sx, sy] = this.fx.shakeOffset();
     ctx.save();
     ctx.translate(sx, sy);
-    drawArena(ctx, this.clock);
+    drawArena(ctx, this.clock, this.crowdHeat);
     // 角色（倒地/死亡的先画在下层）
     const order = this.player.state === 'down' || this.player.state === 'dead' ? [this.player, this.foe] : [this.foe, this.player];
     for (const f of order) drawFighter(ctx, f, this.clock, this.fx);
     this.fx.render(ctx);
+    if (this.phase === 'ko') drawKOLines(ctx, this.pt);
     ctx.restore();
   }
 
@@ -269,4 +301,34 @@ export class Battle {
       matchT: this.matchT,
     };
   }
+}
+
+// KO 慢镜头的漫画放射速度线（固定种子，闪烁呼吸）
+const KO_LINES = (() => {
+  let s = 7;
+  const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const arr = [];
+  for (let i = 0; i < 46; i++) {
+    arr.push({ a: r() * Math.PI * 2, w: 1.5 + r() * 3.5, inner: 250 + r() * 150, ph: r() * 6.28 });
+  }
+  return arr;
+})();
+
+function drawKOLines(ctx, pt) {
+  const alpha = Math.min(0.5, pt * 1.6);
+  ctx.save();
+  ctx.translate(ARENA.W / 2, 420);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineCap = 'round';
+  for (const l of KO_LINES) {
+    const flick = 0.5 + 0.5 * Math.sin(pt * 30 + l.ph);
+    ctx.globalAlpha = alpha * (0.3 + flick * 0.45);
+    ctx.lineWidth = l.w;
+    const c = Math.cos(l.a), sn = Math.sin(l.a);
+    ctx.beginPath();
+    ctx.moveTo(c * l.inner, sn * l.inner);
+    ctx.lineTo(c * 1150, sn * 1150);
+    ctx.stroke();
+  }
+  ctx.restore();
 }

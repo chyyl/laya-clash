@@ -115,6 +115,26 @@ function pose(f, t) {
     p.footF = [24, -4]; p.footB = [32, -8];
     p.kneeF = [18, -14]; p.kneeB = [26, -16];
   }
+
+  // 空中姿态：上升收腿护体，下落伸腿找地
+  if (f.y > 0 && st === 'idle') {
+    const rising = f.vy > 0;
+    const k = rising ? 1 : -0.6;
+    p.hip = [0, -56]; p.chest = [0, -87]; p.head = [0, -103];
+    p.footF = [16, -30 - 14 * k]; p.footB = [-14, -26 - 16 * k];
+    p.kneeF = [22, -42 - 10 * k]; p.kneeB = [-8, -40 - 10 * k];
+    p.handF = [24, rising ? -98 : -84]; p.elbowF = [18, rising ? -86 : -76];
+    p.handB = [-22, -88]; p.elbowB = [-12, -78];
+    p.rot = rising ? 0.05 : -0.04;
+  } else if (st === 'land') {
+    // 落地压缩回弹（深蹲起）
+    const c = 1 - clamp01(f.t / 0.16);
+    p.hip[1] += 16 * c; p.chest[1] += 10 * c; p.head[1] += 8 * c;
+    p.footF = [27, 0]; p.footB = [-25, 0];
+    p.kneeF = [27, -20]; p.kneeB = [-18, -18];
+    p.handF = [31, -46]; p.elbowF = [27, -60];
+    p.handB = [-8, -54]; p.elbowB = [-12, -62];
+  }
   return p;
 }
 
@@ -122,21 +142,24 @@ export function drawFighter(ctx, f, t, fx) {
   const { GROUND } = ARENA;
   const p = pose(f, t);
   const dir = f.facing;
+  const hgt = Math.min(1, (f.y || 0) / 130);          // 空中高度 0..1
   const hitWhite = (f.state === 'hitstun' && f.t < 0.1) || (f.state === 'dead' && f.t < 0.15);
   const baseColor = hitWhite ? '#ffffff' : f.color;
 
   ctx.save();
   ctx.translate(f.x, GROUND);
 
-  // 影子
+  // 影子：跳得越高越小越淡
   ctx.save();
-  ctx.globalAlpha = 0.4;
+  ctx.globalAlpha = 0.4 - 0.24 * hgt;
   ctx.fillStyle = '#000';
+  const sw = f.state === 'down' || f.state === 'dead' ? 52 : 34;
   ctx.beginPath();
-  ctx.ellipse(0, 4, f.state === 'down' || f.state === 'dead' ? 52 : 34, 9, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, sw * (1 - 0.4 * hgt), 9 * (1 - 0.35 * hgt), 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
+  ctx.translate(0, -(f.y || 0));                      // 身体离地抬升
   ctx.scale(dir, 1);       // 局部 +x 永远朝向对手
   if (p.rot) {
     ctx.translate(0, -40);
@@ -211,6 +234,48 @@ export function drawFighter(ctx, f, t, fx) {
   ctx.shadowColor = f.galeT > 0 ? '#ffd23f' : f.color;
   ctx.shadowBlur = 14;
   ctx.fill();
+
+  // 出招演出：蓄力速度线（windup）+ 挥击弧光（active/recovery）
+  if (f.state === 'attack' && f.attack) {
+    const a = f.attack, d = a.data;
+    if (a.phase === 'windup' && a.t / d.windup > 0.55) {
+      ctx.save();
+      ctx.globalAlpha = 0.55 * clamp01((a.t / d.windup - 0.55) / 0.45);
+      ctx.strokeStyle = d.heavy ? '#ff5f6d' : 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.shadowBlur = 0;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-28 - 6 * Math.abs(i), -66 + i * 15);
+        ctx.lineTo(-50 - 16 * Math.abs(i), -66 + i * 18);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    if (a.phase !== 'windup') {
+      const cy = d.heavy ? -74 : -66;
+      const sw2 = a.phase === 'active'
+        ? clamp01((a.t - d.windup) / Math.max(0.01, d.active * 1.5))
+        : 1;
+      const fade = a.phase === 'recovery'
+        ? 1 - clamp01((a.t - d.windup - d.active) / Math.max(0.01, d.rec))
+        : 1;
+      if (fade > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = 0.55 * fade;
+        ctx.strokeStyle = f.galeT > 0 ? '#ffd23f' : '#ffffff';
+        ctx.lineWidth = d.heavy ? 7 : 5;
+        ctx.shadowColor = f.color; ctx.shadowBlur = 14;
+        const a0 = d.heavy ? -2.0 : -1.0, a1 = d.heavy ? 0.55 : 0.32;
+        const head = lerp(a0, a1, sw2);
+        const tail = Math.max(a0, lerp(a0, a1, sw2 - 0.5));
+        ctx.beginPath();
+        ctx.arc(0, cy, d.heavy ? 78 : 66, tail, head + 0.18);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
 
   // 格挡护盾
   if (f.state === 'block') {

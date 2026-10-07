@@ -29,6 +29,10 @@ export const BASE = {
 
   dash: { dur: 0.18, speed: 820, iframe: 0.13, cost: 12, cd: 0.55 },
 
+  // 跳跃：起跳瞬时、重力弧线；空中不可出招/格挡；跳过 dodgeH 高度的地面攻击
+  jump: { v0: 780, gravity: 2400, cd: 0.45, airCtrl: 0.8, land: 0.16, dodgeH: 55 },
+  // 空时约 0.65s、滞空顶点约 127px；落地硬直 0.16s 是主要代价
+
   hitstunL: 0.22,
   hitstunH: 0.45,
   knockdown: { down: 0.75, getup: 0.35, invuln: 0.25 },

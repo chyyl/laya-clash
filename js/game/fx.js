@@ -48,6 +48,14 @@ export class FX {
     this.texts.push({ x, y, str, color, size, life: 0.8, max: 0.8, vy: -70 });
   }
 
+  // 漫画拟声词：星爆底 + 旋转 + 入场缩放弹出
+  comic(x, y, str, color = '#ffd23f', size = 34) {
+    this.texts.push({
+      x, y, str, color, size, life: 0.7, max: 0.7, vy: -46,
+      comic: true, rot: (Math.random() - 0.5) * 0.5,
+    });
+  }
+
   ring(x, y, maxR, color, life = 0.35) {
     this.rings.push({ x, y, r: 14, maxR, color, life, max: life });
   }
@@ -122,7 +130,41 @@ export class FX {
     }
     for (const t of this.texts) {
       const a = Math.min(1, t.life / t.max * 2);
+      const age = 1 - t.life / t.max;
       ctx.save();
+      if (t.comic) {
+        // 入场弹跳缩放
+        const s = 1 + 0.55 * Math.max(0, 1 - age * 5);
+        ctx.translate(t.x, t.y + 0);
+        ctx.rotate(t.rot);
+        ctx.scale(s, s);
+        ctx.globalAlpha = a;
+        // 星爆底
+        ctx.beginPath();
+        const spikes = 12;
+        for (let i = 0; i < spikes * 2; i++) {
+          const ang = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2;
+          const rr = i % 2 ? t.size * 0.78 : t.size * 1.3;
+          ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr * 0.82);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(4,6,11,0.88)';
+        ctx.fill();
+        ctx.strokeStyle = t.color;
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+        // 文字
+        ctx.font = `900 ${t.size}px "Chakra Petch","Noto Sans SC",sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = 'rgba(4,6,11,0.95)';
+        ctx.strokeText(t.str, 0, 0);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(t.str, 0, 0);
+        ctx.restore();
+        continue;
+      }
       ctx.globalAlpha = a;
       ctx.font = `700 ${t.size}px "Chakra Petch","Noto Sans SC",sans-serif`;
       ctx.textAlign = 'center';

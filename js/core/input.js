@@ -3,6 +3,7 @@
 const KEYMAP = {
   KeyA: 'left', ArrowLeft: 'left',
   KeyD: 'right', ArrowRight: 'right',
+  KeyW: 'jump', ArrowUp: 'jump',
   KeyJ: 'light', KeyZ: 'light',
   KeyK: 'heavy', KeyX: 'heavy',
   Space: 'dash', ShiftLeft: 'dash', ShiftRight: 'dash',

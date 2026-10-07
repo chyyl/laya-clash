@@ -15,6 +15,7 @@ export class Fighter {
   reset(x, facing) {
     const m = this.mods;
     this.x = x; this.vx = 0;
+    this.y = 0; this.vy = 0;               // 跳跃：离地高度与竖直速度
     this.facing = facing;
     this.hpMax = Math.round(BASE.hp * m.hpMul);
     this.hp = this.hpMax;
@@ -39,7 +40,7 @@ export class Fighter {
     this.chaseT = 0;
     this.overloadT = 0;
     this.parryBuffT = 0;               // 弹反大师：下一击强化
-    this.cd = { gale: 0, jam: 0, dash: 0 };
+    this.cd = { gale: 0, jam: 0, dash: 0, jump: 0 };
     this.dead = false;
   }
 
@@ -49,7 +50,7 @@ export class Fighter {
         || this.state === 'hitstun' || this.state === 'dead';
   }
 
-  canAct() { return this.state === 'idle' || this.state === 'block'; }
+  canAct() { return (this.state === 'idle' || this.state === 'block') && this.y === 0; }
 
   effDmg(base, { gale = false, exec = false } = {}) {
     let d = base * this.mods.dmgMul;
@@ -62,7 +63,6 @@ export class Fighter {
 
   update(dt, opp, intent) {
     this.targetVulnerable = opp.vulnerable;
-    if (this.dead) { this.t += dt; return; }
 
     // --- 计时器 ---
     const m = this.mods;
@@ -70,6 +70,7 @@ export class Fighter {
     this.cd.gale = Math.max(0, this.cd.gale - dt);
     this.cd.jam = Math.max(0, this.cd.jam - dt);
     this.cd.dash = Math.max(0, this.cd.dash - dt);
+    this.cd.jump = Math.max(0, this.cd.jump - dt);
     this.iframeT = Math.max(0, this.iframeT - dt);
     this.invulnT = Math.max(0, this.invulnT - dt);
     this.silenceT = Math.max(0, this.silenceT - dt);
@@ -85,16 +86,30 @@ export class Fighter {
       this.guard = Math.min(this.guardMax, this.guard + BASE.guardRegen * dt);
     }
 
+    // --- 跳跃：重力积分与落地（全状态通用） ---
+    if (this.y > 0 || this.vy !== 0) {
+      this.vy -= BASE.jump.gravity * dt;
+      this.y += this.vy * dt;
+      if (this.y <= 0) {
+        this.y = 0; this.vy = 0;
+        this.events.push({ type: 'land', x: this.x });
+        if (this.state === 'idle') this._setState('land');   // 落地硬直（受控状态不受影响）
+      }
+    }
+    if (this.dead) { this.t += dt; return; }
+
     // 面向对手（冲刺中也保持）
     if (opp.x !== this.x) this.facing = opp.x > this.x ? 1 : -1;
 
     // --- 无敌/倒地等受控状态 ---
-    if (this.state === 'hitstun' || this.state === 'stagger' || this.state === 'down' || this.state === 'getup') {
+    if (this.state === 'hitstun' || this.state === 'stagger' || this.state === 'down' || this.state === 'getup'
+        || this.state === 'land') {
       this.t += dt;
       this.vx *= (1 - 6 * dt);
       this.x += this.vx * dt;
       if (this.state === 'hitstun' && this.t >= this.hitstunDur) this._setState('idle');
       else if (this.state === 'stagger' && this.t >= (this.staggerDur || BASE.stagger)) this._setState('idle');
+      else if (this.state === 'land' && this.t >= BASE.jump.land) this._setState('idle');
       else if (this.state === 'down' && this.t >= BASE.knockdown.down) {
         this._setState('getup');
         this.invulnT = BASE.knockdown.invuln;
@@ -104,6 +119,14 @@ export class Fighter {
 
     if (this.state === 'dash') { this._updateDash(dt); return; }
     if (this.state === 'attack') { this._updateAttack(dt, opp); this._bufferAndMove(dt, intent); return; }
+
+    // --- 空中：受限水平操控，不可出招/格挡 ---
+    if (this.y > 0) {
+      const sp = BASE.moveSpeed * m.moveMul * BASE.jump.airCtrl;
+      this.vx = (intent.axis || 0) * sp;
+      this.x += this.vx * dt;
+      return;
+    }
 
     // --- idle / block：可自由行动 ---
     this.blocking = this.state === 'block';
@@ -121,6 +144,7 @@ export class Fighter {
       if (act === 'light') this._tryLight();
       else if (act === 'heavy') this._tryHeavy();
       else if (act === 'dash') this._tryDash(intent);
+      else if (act === 'jump') this._tryJump();
       else if (act === 'gale') this._tryGale();
       else if (act === 'jam') this._tryJam(opp);
     }
@@ -207,6 +231,7 @@ export class Fighter {
           else if (p === 'heavy') this._tryHeavy();
           else if (p === 'gale') this._tryGale();
           else if (p === 'jam') this._tryJam(opp);
+          else if (p === 'jump') this._tryJump();
           else if (p === 'block') { /* 保持 idle，下帧由 intent.block 接手 */ }
         }
       }
@@ -219,6 +244,10 @@ export class Fighter {
     if (dist < -30 || dist > d.reach + BASE.bodyR) return false;
     if (Math.abs(opp.x - this.x) > d.reach + 18) return false;
     if (!opp.alive) return false;
+    if (opp.y > BASE.jump.dodgeH) {                       // 跳过去了：地面攻击够不着
+      opp.events.push({ type: 'evade', x: opp.x, y: 520 - opp.y, jump: true });
+      return false;
+    }
 
     const galeOn = this.galeT > 0;
     let dmg = this.effDmg(d.dmg, { gale: galeOn, exec: true });
@@ -329,8 +358,18 @@ export class Fighter {
     this.vx = -this.facing * 120;
   }
 
+  _tryJump() {
+    if (!this.canAct() || this.cd.jump > 0) return;
+    if (this.state === 'block') this._setState('idle');
+    this.cd.jump = BASE.jump.cd;
+    this.pending = null;
+    this.vy = BASE.jump.v0;
+    this.y = Math.max(this.y, 0.01);           // 离地（0 表示贴地）
+    this.events.push({ type: 'jump', x: this.x });
+  }
+
   _tryDash(intent) {
-    if (this.cd.dash > 0 || this.state === 'dash') return;
+    if (this.y > 0 || this.cd.dash > 0 || this.state === 'dash') return;
     if (this.energy < BASE.dash.cost) return;
     if (this.state === 'block') this._setState('idle');
     if (this.state === 'attack') {
@@ -374,7 +413,7 @@ export class Fighter {
     const dist = Math.abs(opp.x - this.x);
     const inFront = (opp.x - this.x) * this.facing > -40;
     let connected = false;
-    if (dist <= BASE.jam.range && inFront) {
+    if (dist <= BASE.jam.range && inFront && opp.y <= BASE.jump.dodgeH) {   // 跳跃可跨过冲击波
       const res = opp.takeHit({
         dmg: this.effDmg(BASE.jam.dmg, { exec: true }),
         guard: BASE.jam.guard, kb: BASE.jam.kb, knockdown: false,

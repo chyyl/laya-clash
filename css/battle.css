@@ -96,6 +96,7 @@ body.no-hints .ctrl-hints{display:none}
 .tbtn-heavy{width:92px;height:92px;right:132px;bottom:126px;font-size:27px;border-color:rgba(255,210,63,.6);color:var(--gold)}
 .tbtn-dash{width:88px;height:88px;right:142px;bottom:22px;font-size:25px;border-color:rgba(89,242,165,.55);color:var(--ok)}
 .tbtn-block{width:88px;height:88px;right:36px;bottom:186px;font-size:25px;border-color:rgba(138,107,255,.6);color:#b99cff}
+.tbtn-jump{width:80px;height:80px;right:126px;bottom:222px;font-size:24px;border-color:rgba(238,242,255,.55);color:var(--ink)}
 .tbtn-skill{width:78px;height:78px;font-size:17px;letter-spacing:.04em;border-color:rgba(61,242,255,.5);color:var(--cyan);padding:0}
 .tbtn-skill[data-act=gale]{right:236px;bottom:222px}
 .tbtn-skill[data-act=jam]{right:246px;bottom:132px;border-color:rgba(255,79,216,.55);color:var(--magenta)}

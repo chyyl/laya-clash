@@ -90,6 +90,16 @@ const RECIPES = {
     noise(t, 0.3, 'lowpass', 3000, 300, sfxBus, 0.8);
     tone('sawtooth', 300, 70, t, 0.3, sfxBus, 0.5);
   },
+  jump() {
+    const t = ctx.currentTime;
+    noise(t, 0.16, 'bandpass', 600, 2100, sfxBus, 0.3);
+    tone('sine', 260, 620, t, 0.13, sfxBus, 0.16);
+  },
+  cheer() {
+    const t = ctx.currentTime;
+    noise(t, 0.5, 'bandpass', 900, 500, sfxBus, 0.26);
+    noise(t + 0.06, 0.4, 'lowpass', 1600, 700, sfxBus, 0.2);
+  },
   land() { tone('sine', 110, 50, ctx.currentTime, 0.1, sfxBus, 0.5); },
   gale() {
     const t = ctx.currentTime;

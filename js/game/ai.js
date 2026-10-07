@@ -52,7 +52,7 @@ export class AIBrain {
     } else if (pl.type === 'attack') {
       if (dist > reach + 18) intent.axis = dirToFoe;      // 贴上去继续打
       else if (dist < 46) intent.axis = -dirToFoe * 0.5;  // 防重叠
-      if (dist < reach + 12 && !this.blockHold) {
+      if (dist < reach + 12 && !this.blockHold && foe.y < 40) {   // 对方跳在空中时不挥空拳
         const chainChance = p.combo;
         if (Math.random() < chainChance) {
           intent.actions.push(Math.random() < 0.22 ? 'heavy' : 'light');
@@ -60,6 +60,9 @@ export class AIBrain {
           this.plan = { type: 'backoff', t: 0.35 + Math.random() * 0.4 };
         }
       }
+    } else if (pl.type === 'hop') {
+      intent.actions.push('jump');                        // 起跳跨过对手的重击
+      this.plan = { type: 'backoff', t: 0.35 };
     } else if (pl.type === 'defend') {
       intent.block = true;
       if (!foeAttacking && foe.state !== 'stagger') {
@@ -75,7 +78,8 @@ export class AIBrain {
       intent.actions.push(pl.skill);
       this.plan = { type: 'attack', t: 0.6 };
     } else if (pl.type === 'punish') {
-      if (dist < reach + 14) intent.actions.push('heavy');
+      if (dist < reach + 14 && foe.y < 40) intent.actions.push('heavy');
+      else if (foe.y >= 40) { /* 对方滞空：等他落地 */ }
       else intent.axis = dirToFoe;
     } else if (pl.type === 'dashIn') {
       intent.axis = dirToFoe;
@@ -100,6 +104,12 @@ export class AIBrain {
     if (r < p.mistake) return;                                  // 没反应过来
 
     const foeHeavy = foe.attack && foe.attack.data.heavy;
+
+    // 起跳闪避：重击抡过来时跨过去（难度参数 hop 控制频率，独立掷骰）
+    if (foeHeavy && me.y === 0 && me.cd.jump <= 0 && Math.random() < (p.hop || 0)) {
+      this.plan = { type: 'hop', t: 0.05 };
+      return;
+    }
 
     // 先看能不能反打（对方收招中且够得着）
     if (foe.attack && foe.attack.phase === 'recovery' && dist < reach && r < p.punish) {

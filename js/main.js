@@ -257,3 +257,6 @@ const loop = createLoop((dt) => {
 });
 loop.start();
 showScreen('menu');
+
+// 调试句柄：控制台可读取对局内部状态（console/__lc）
+window.__lc = { battle: () => battle, Input, settings: () => settings };
