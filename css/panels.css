@@ -1,15 +1,21 @@
 /* ============ Laya Clash · panels ============ */
 
 /* ============ 天赋装配 ============ */
-.talent-layout{display:flex;gap:24px;width:1180px;margin-top:110px;align-items:flex-start}
-.branches{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+/* 内容高度曾超 720 设计像素被裁：改为顶对齐 + 内部滚动兜底，布局压缩到一屏内 */
+#screen-talent{justify-content:flex-start;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;
+  scrollbar-width:thin;scrollbar-color:rgba(140,160,220,.35) transparent}
+#screen-talent::-webkit-scrollbar{width:8px}
+#screen-talent::-webkit-scrollbar-thumb{background:rgba(140,160,220,.35)}
+#screen-talent::-webkit-scrollbar-track{background:transparent}
+.talent-layout{display:flex;gap:24px;width:1180px;margin-top:96px;align-items:flex-start;flex-shrink:0}
+.branches{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .branch{background:linear-gradient(165deg,var(--panel2),var(--panel));border:1px solid var(--line);
-  clip-path:var(--clip);padding:18px 20px 16px;position:relative;overflow:hidden}
+  clip-path:var(--clip);padding:16px 20px 12px;position:relative;overflow:hidden}
 .branch::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:var(--bc,var(--cyan))}
 .branch h3{font-family:var(--f-cn);font-weight:900;font-size:17px;letter-spacing:.26em;color:var(--bc,var(--cyan));
   display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .branch h3 .branch-pts{margin-left:auto;font-family:var(--f-disp);font-size:13px;color:var(--dim);letter-spacing:.05em}
-.stat-line{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:11px 0;border-top:1px solid rgba(140,160,220,.09)}
+.stat-line{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:7px 0;border-top:1px solid rgba(140,160,220,.09)}
 .stat-line:first-of-type{border-top:0}
 .stat-info .stat-name{font-family:var(--f-cn);font-weight:700;font-size:15px;letter-spacing:.06em}
 .stat-info .stat-desc{font-size:11.5px;color:var(--dim);letter-spacing:.03em;margin-top:2px;font-family:var(--f-cn)}
@@ -22,33 +28,43 @@
 .pip{width:13px;height:13px;transform:rotate(45deg);border:1px solid rgba(140,160,220,.4);background:transparent;transition:.16s}
 .pip.on{background:var(--bc,var(--cyan));border-color:var(--bc,var(--cyan));box-shadow:0 0 9px var(--bc,var(--cyan))}
 
-.talent-side{width:352px;display:flex;flex-direction:column;gap:16px}
+.talent-side{width:352px;flex-shrink:0}
 .side-card{background:rgba(16,21,36,.75);border:1px solid var(--line);clip-path:var(--clip);padding:16px 18px}
 .side-card h3{font-family:var(--f-cn);font-weight:900;font-size:14px;letter-spacing:.3em;color:var(--dim);margin-bottom:12px}
 .side-card h3 em{font-style:normal;color:var(--gold);letter-spacing:.05em}
 .keystone-card{border-color:rgba(255,210,63,.3)}
-.keystone{display:block;width:100%;text-align:left;padding:11px 13px;margin-bottom:9px;position:relative;
+#keystone-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.keystone{display:block;width:100%;text-align:left;padding:9px 11px;position:relative;
   border:1px solid var(--line);clip-path:var(--clip-sm);background:rgba(255,210,63,.03);transition:.15s}
-.keystone:last-child{margin-bottom:0}
-.keystone .ks-name{font-family:var(--f-cn);font-weight:700;font-size:14.5px;letter-spacing:.08em;color:var(--gold)}
-.keystone .ks-desc{font-family:var(--f-cn);font-size:12px;color:var(--dim);line-height:1.6;margin-top:3px}
+.keystone .ks-name{font-family:var(--f-cn);font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--gold)}
+.keystone .ks-desc{font-family:var(--f-cn);font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:3px}
 .keystone.on{border-color:var(--gold);background:rgba(255,210,63,.12);box-shadow:0 0 18px rgba(255,210,63,.14)}
 .keystone.on .ks-name::after{content:" 已装配";font-size:11px;color:#03131b;background:var(--gold);padding:1px 7px;clip-path:var(--clip-sm);margin-left:6px}
 .keystone.locked{opacity:.42}
-.preset-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.preset-btn{font-family:var(--f-cn);font-weight:700;font-size:13.5px;letter-spacing:.14em;padding:10px 6px;
-  border:1px solid var(--line);clip-path:var(--clip-sm);color:var(--dim);transition:.14s}
+
+.talent-foot{display:flex;gap:16px;width:1180px;margin-top:14px;align-items:stretch;flex-shrink:0}
+.foot-presets{width:340px;flex-shrink:0}
+.preset-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.preset-btn{font-family:var(--f-cn);font-weight:700;font-size:12px;letter-spacing:.08em;padding:10px 4px;
+  border:1px solid var(--line);clip-path:var(--clip-sm);color:var(--dim);transition:.14s;white-space:nowrap}
 .preset-btn:hover{color:var(--cyan);border-color:rgba(61,242,255,.55);box-shadow:0 0 16px rgba(61,242,255,.14)}
-.stat-preview{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
-.stat-preview .pv{display:flex;justify-content:space-between;font-size:12.5px;letter-spacing:.04em;
+.foot-stats{flex:1}
+.stat-preview{display:grid;grid-template-columns:repeat(6,1fr);gap:8px 6px}
+.stat-preview .pv{display:flex;justify-content:space-between;font-size:11.5px;letter-spacing:.02em;white-space:nowrap;
   font-family:var(--f-cn);color:var(--dim);border-bottom:1px dashed rgba(140,160,220,.14);padding-bottom:4px}
 .stat-preview .pv b{color:var(--ink);font-family:var(--f-ui)}
-.talent-actions{display:flex;gap:10px}
+.talent-actions{width:240px;flex-shrink:0;display:flex;gap:10px;align-self:center}
 .talent-actions .btn{min-width:0;flex:1;justify-content:center;padding:13px 10px;font-size:15.5px;letter-spacing:.14em}
 #talent-save{animation:savePulse 2.2s ease-in-out infinite}
 @keyframes savePulse{0%,100%{box-shadow:0 0 0 rgba(61,242,255,0)}50%{box-shadow:0 0 22px rgba(61,242,255,.3)}}
 
 /* ============ 教程 ============ */
+/* 内容固定通常在 720 内；safe center 仅作极端换行兜底（不支持 safe 的浏览器回退原居中） */
+#screen-tutorial,#screen-settings{overflow-y:auto;overflow-x:hidden;touch-action:pan-y;
+  justify-content:safe center;scrollbar-width:thin;scrollbar-color:rgba(140,160,220,.35) transparent}
+#screen-tutorial::-webkit-scrollbar,#screen-settings::-webkit-scrollbar{width:8px}
+#screen-tutorial::-webkit-scrollbar-thumb,#screen-settings::-webkit-scrollbar-thumb{background:rgba(140,160,220,.35)}
+#screen-tutorial::-webkit-scrollbar-track,#screen-settings::-webkit-scrollbar-track{background:transparent}
 .tut-frame{width:980px;margin-top:110px;background:rgba(16,21,36,.75);border:1px solid var(--line);
   clip-path:var(--clip);padding:34px 40px 26px;animation:screenIn .3s both}
 .tut-body h3{font-family:var(--f-cn);font-weight:900;font-size:22px;letter-spacing:.18em;color:var(--cyan);margin-bottom:16px}
@@ -88,7 +104,13 @@
 .set-danger{border-color:rgba(255,60,95,.35)}
 
 /* ============ 战绩 ============ */
-#records-body{display:flex;flex-direction:column;gap:18px;width:940px;margin-top:110px;animation:screenIn .3s both}
+/* 对局累积后表格会超出 720 设计像素：顶对齐 + 内部滚动兜底 */
+#screen-records{justify-content:flex-start;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;
+  scrollbar-width:thin;scrollbar-color:rgba(140,160,220,.35) transparent}
+#screen-records::-webkit-scrollbar{width:8px}
+#screen-records::-webkit-scrollbar-thumb{background:rgba(140,160,220,.35)}
+#screen-records::-webkit-scrollbar-track{background:transparent}
+#records-body{display:flex;flex-direction:column;gap:18px;width:940px;margin-top:110px;animation:screenIn .3s both;flex-shrink:0}
 .rec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
 .rec-cell{background:rgba(16,21,36,.75);border:1px solid var(--line);clip-path:var(--clip-sm);padding:18px 16px;text-align:center}
 .rec-cell b{display:block;font-family:var(--f-disp);font-size:34px;color:var(--cyan);text-shadow:0 0 18px rgba(61,242,255,.45)}
