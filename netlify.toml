@@ -1,0 +1,8 @@
+# 纯静态站点：无需构建，直接发布根目录
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"

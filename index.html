@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07090f">
+<meta name="description" content="Laya Clash 火柴竞技场 — 实时动作对战，天赋自由装配，离线可玩">
+<title>Laya Clash · 火柴竞技场</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@600;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/panels.css">
+<link rel="stylesheet" href="css/battle.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game" width="1280" height="720" aria-label="竞技场"></canvas>
+
+  <!-- ================= 战斗 HUD ================= -->
+  <div id="hud" class="layer hidden">
+    <div class="hud-top">
+      <div class="hp-block mine">
+        <div class="hp-name"><span class="tag-dot"></span>你 <em id="hud-pbuild">均衡流</em></div>
+        <div class="hp-bar"><div id="php-flash" class="hp-flash"></div><div id="php-fill" class="hp-fill"></div></div>
+        <div class="sub-bars">
+          <div class="mini-bar energy" title="能量"><i id="pen-fill"></i></div>
+          <div class="mini-bar guard" title="格挡值"><i id="pgd-fill"></i></div>
+        </div>
+      </div>
+      <div class="hud-center">
+        <div id="hud-streak" class="streak-chip hidden">连胜 0</div>
+        <button id="btn-pause" class="btn-icon" aria-label="暂停">II</button>
+      </div>
+      <div class="hp-block foe">
+        <div class="hp-name"><span class="tag-dot"></span><em id="hud-aname">对手</em> <b id="hud-abuild">均衡流</b></div>
+        <div class="hp-bar"><div id="ehp-flash" class="hp-flash"></div><div id="ehp-fill" class="hp-fill"></div></div>
+        <div class="sub-bars">
+          <div class="mini-bar energy"><i id="een-fill"></i></div>
+          <div class="mini-bar guard"><i id="egd-fill"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="announce" class="announce hidden"><span id="announce-text"></span></div>
+    <div id="combo" class="combo hidden"><b id="combo-x">0</b><span>HIT</span></div>
+    <div id="silence-tag" class="silence-tag hidden">被干扰 · 技能封锁</div>
+
+    <div class="hud-bottom">
+      <div id="skill-rack" class="skill-rack">
+        <div class="skill" id="sk-gale" data-act="gale">
+          <div class="skill-cd"></div><div class="skill-key">Q</div>
+          <div class="skill-name">疾风</div><div class="skill-cost">40</div>
+        </div>
+        <div class="skill" id="sk-jam" data-act="jam">
+          <div class="skill-cd"></div><div class="skill-key">E</div>
+          <div class="skill-name">干扰</div><div class="skill-cost">35</div>
+        </div>
+      </div>
+      <div id="ctrl-hints" class="ctrl-hints">
+        <kbd>A</kbd><kbd>D</kbd> 移动 <kbd>J</kbd> 轻击 <kbd>K</kbd> 重击 <kbd>L</kbd> 格挡·轻按弹反 <kbd>Space</kbd> 冲刺
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 触控层 ================= -->
+  <div id="touch" class="layer hidden">
+    <div id="stick-zone">
+      <div id="stick-base"><div id="stick-nub"></div></div>
+    </div>
+    <div id="btn-cluster">
+      <button class="tbtn tbtn-light" data-act="light" aria-label="轻击">拳</button>
+      <button class="tbtn tbtn-heavy" data-act="heavy" aria-label="重击">重</button>
+      <button class="tbtn tbtn-dash" data-act="dash" aria-label="冲刺">冲</button>
+      <button class="tbtn tbtn-block" data-act="block" aria-label="格挡">防</button>
+      <button class="tbtn tbtn-skill" data-act="gale" aria-label="疾风">疾风</button>
+      <button class="tbtn tbtn-skill" data-act="jam" aria-label="干扰">干扰</button>
+    </div>
+  </div>
+
+  <!-- ================= 主菜单 ================= -->
+  <section id="screen-menu" class="screen">
+    <div class="deco-sun" aria-hidden="true"></div>
+    <div class="deco-fence" aria-hidden="true"></div>
+    <header class="logo-block">
+      <div class="logo-kicker">实时动作对战</div>
+      <h1 class="logo"><span class="logo-row">LAYA<em>CLASH</em></span></h1>
+      <div class="logo-sub">火柴竞技场 · 天赋由你定义</div>
+    </header>
+    <nav class="menu-nav">
+      <button class="btn btn-primary btn-xl" data-go="diff">开始对战<kbd>Enter</kbd></button>
+      <button class="btn" data-go="talent">天赋装配<i>点数随时可改</i></button>
+      <button class="btn" data-go="tutorial">教程<i>操作与机制</i></button>
+      <button class="btn" data-go="settings">设置<i>音量 · 画面 · 操控</i></button>
+      <button class="btn" data-go="records">战绩<i>连胜与胜率</i></button>
+    </nav>
+    <footer class="menu-foot">
+      <span>离线可玩</span><span class="sep">/</span><span>数据仅存本机</span><span class="sep">/</span><span>v1.0</span>
+    </footer>
+  </section>
+
+  <!-- ================= 难度选择 ================= -->
+  <section id="screen-diff" class="screen hidden">
+    <div class="screen-head">
+      <button class="btn-back" data-go="menu">&larr; 返回</button>
+      <h2>选择对手</h2>
+      <div class="head-note">对手会轮换不同流派的天赋装配</div>
+    </div>
+    <div class="diff-cards">
+      <button class="diff-card" data-diff="rookie">
+        <div class="diff-tier">T1</div>
+        <h3>新手挑战者</h3>
+        <p>反应迟缓、常露破绽，用来熟悉连招与弹反。</p>
+        <div class="diff-meta"><span class="chip">均衡 / 铁壁</span><span class="chip chip-soft">失误率高</span></div>
+      </button>
+      <button class="diff-card diff-mid" data-diff="adept">
+        <div class="diff-tier">T2</div>
+        <h3>老手斗士</h3>
+        <p>会格挡、会反击，抓得住你贪刀的空隙。</p>
+        <div class="diff-meta"><span class="chip">猛攻 / 灵动</span><span class="chip chip-soft">反应中等</span></div>
+      </button>
+      <button class="diff-card diff-hard" data-diff="master">
+        <div class="diff-tier">T3</div>
+        <h3>宗师魔王</h3>
+        <p>弹反精准、技能掐点，硬碰硬很难占便宜。</p>
+        <div class="diff-meta"><span class="chip">猛攻 / 灵动</span><span class="chip chip-soft">弹反率高</span></div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ================= 天赋装配 ================= -->
+  <section id="screen-talent" class="screen hidden">
+    <div class="screen-head">
+      <button class="btn-back" data-go="menu">&larr; 返回</button>
+      <h2>天赋装配</h2>
+      <div class="pool-pill">剩余点数 <b id="talent-pool">15</b><span>/15</span></div>
+    </div>
+    <div class="talent-layout">
+      <div id="talent-branches" class="branches"><!-- JS 注入 --></div>
+      <aside class="talent-side">
+        <div class="side-card keystone-card">
+          <h3>关键大点 <em id="keystone-count">0/2</em></h3>
+          <div id="keystone-list"><!-- JS --></div>
+        </div>
+        <div class="side-card">
+          <h3>快速方案</h3>
+          <div id="talent-presets" class="preset-row"><!-- JS --></div>
+        </div>
+        <div class="side-card">
+          <h3>最终属性</h3>
+          <div id="stat-preview" class="stat-preview"><!-- JS --></div>
+        </div>
+        <div class="talent-actions">
+          <button id="talent-reset" class="btn btn-ghost">全部重置</button>
+          <button id="talent-save" class="btn btn-primary">保存装配</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= 教程 ================= -->
+  <section id="screen-tutorial" class="screen hidden">
+    <div class="screen-head">
+      <button class="btn-back" data-go="menu">&larr; 返回</button>
+      <h2>教程</h2>
+      <div class="head-note" id="tut-page-label">1/4</div>
+    </div>
+    <div class="tut-frame">
+      <div id="tut-body" class="tut-body"><!-- JS --></div>
+      <div class="tut-nav">
+        <button id="tut-prev" class="btn btn-ghost">&larr; 上一页</button>
+        <div id="tut-dots" class="tut-dots"></div>
+        <button id="tut-next" class="btn">下一页 &rarr;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 设置 ================= -->
+  <section id="screen-settings" class="screen hidden">
+    <div class="screen-head">
+      <button class="btn-back" data-go="menu">&larr; 返回</button>
+      <h2>设置</h2>
+      <div class="head-note">自动保存</div>
+    </div>
+    <div class="settings-grid">
+      <div class="set-card">
+        <h3>声音</h3>
+        <label class="set-row"><span>音乐</span><input type="range" id="set-music" min="0" max="100" value="60"><b id="set-music-v">60</b></label>
+        <label class="set-row"><span>音效</span><input type="range" id="set-sfx" min="0" max="100" value="80"><b id="set-sfx-v">80</b></label>
+      </div>
+      <div class="set-card">
+        <h3>画面</h3>
+        <div class="set-row"><span>屏幕震动</span><div class="seg" id="set-shake" data-group="shake"><button data-v="on" class="on">开</button><button data-v="off">关</button></div></div>
+        <div class="set-row"><span>粒子效果</span><div class="seg" id="set-particles" data-group="particles"><button data-v="high" class="on">高</button><button data-v="low">低</button></div></div>
+      </div>
+      <div class="set-card">
+        <h3>操控</h3>
+        <div class="set-row"><span>触屏按钮</span><div class="seg" id="set-touch" data-group="touch"><button data-v="auto" class="on">自动</button><button data-v="on">常显</button><button data-v="off">隐藏</button></div></div>
+        <div class="set-row"><span>键盘提示</span><div class="seg" id="set-hints" data-group="hints"><button data-v="on" class="on">开</button><button data-v="off">关</button></div></div>
+      </div>
+      <div class="set-card set-danger">
+        <h3>数据</h3>
+        <p>战绩、天赋与设置全部保存在本机浏览器。</p>
+        <button id="set-reset" class="btn btn-ghost btn-danger">清空全部数据</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 战绩 ================= -->
+  <section id="screen-records" class="screen hidden">
+    <div class="screen-head">
+      <button class="btn-back" data-go="menu">&larr; 返回</button>
+      <h2>战绩</h2>
+      <div class="head-note">仅存本机</div>
+    </div>
+    <div id="records-body"><!-- JS --></div>
+  </section>
+
+  <!-- ================= 结算 ================= -->
+  <section id="screen-result" class="screen hidden">
+    <div id="result-stamp" class="stamp">胜利</div>
+    <div id="result-sub" class="result-sub">击败 对手</div>
+    <div class="result-stats">
+      <div><b id="rs-time">0:00</b><span>用时</span></div>
+      <div><b id="rs-combo">0</b><span>最高连击</span></div>
+      <div><b id="rs-dmg">0</b><span>总伤害</span></div>
+      <div><b id="rs-streak">0</b><span>当前连胜</span></div>
+    </div>
+    <div class="result-actions">
+      <button id="res-rematch" class="btn btn-primary btn-xl">再战一局<kbd>Enter</kbd></button>
+      <div class="result-row">
+        <button id="res-diff" class="btn">换对手</button>
+        <button id="res-talent" class="btn">调整天赋</button>
+        <button id="res-menu" class="btn btn-ghost">主菜单</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 暂停 ================= -->
+  <section id="screen-pause" class="screen hidden">
+    <div class="pause-box">
+      <h2>暂停</h2>
+      <button id="pause-resume" class="btn btn-primary btn-xl">继续<kbd>Esc</kbd></button>
+      <button id="pause-restart" class="btn">重新开始</button>
+      <button id="pause-quit" class="btn btn-ghost">退出到菜单</button>
+      <label class="pause-mute"><input type="checkbox" id="pause-mute"><span>静音</span></label>
+    </div>
+  </section>
+
+  <!-- ================= VS 过场 ================= -->
+  <div id="vs-layer" class="layer hidden">
+    <div class="vs-plate left"><div class="vs-name">挑战者</div><div class="vs-build" id="vs-pbuild">均衡流</div></div>
+    <div class="vs-mark">VS</div>
+    <div class="vs-plate right"><div class="vs-name" id="vs-aname">对手</div><div class="vs-build" id="vs-abuild">均衡流</div></div>
+  </div>
+
+  <div id="portrait-hint" class="hidden"><div class="ph-box">请旋转至横屏<br><span>横屏体验更佳</span></div></div>
+  <div id="grain" aria-hidden="true"></div>
+</div>
+<noscript><div class="noscript">需要启用 JavaScript 才能运行 Laya Clash</div></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
