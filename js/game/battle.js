@@ -239,6 +239,20 @@ export class Battle {
           if (owner.isPlayer) this.dmgDealt += e.dmg;
         }
         break;
+      case 'quake':                                         // 落地震大点
+        AudioFX.play('land');
+        fx.ring(e.x, 545, BASE.quake.range * 0.8, '#ffd23f', 0.45);
+        fx.spark(e.x, 540, -Math.PI / 2, '#c9a2ff', 12, 320);
+        if (e.connected) {
+          fx.text(e.x + owner.facing * 50, 452, '震地!', '#ffd23f', 26);
+          this.crowdHeat = Math.min(1, this.crowdHeat + 0.25);
+          if (owner.isPlayer) this.dmgDealt += e.dmg;
+        }
+        break;
+      case 'deny':                                          // 动作被拒的原因提示
+        AudioFX.play('click');
+        fx.text(e.x, 466, e.msg, '#8b93ad', 19);
+        break;
       case 'ko': {
         AudioFX.play('ko');
         AudioFX.play('cheer');

@@ -102,7 +102,7 @@ const PAGES = [
     html: `
       <p>把对手的生命打到 0 即可获胜。你与对手会自动面对面，专注距离与时机的博弈。</p>
       <div class="tut-grid">
-        <div class="tut-cell"><b>移动</b><span><kbd>A</kbd><kbd>D</kbd> 走位，<kbd>W</kbd> 起跳躲招（空中跳过地面攻击）</span></div>
+        <div class="tut-cell"><b>移动</b><span><kbd>A</kbd><kbd>D</kbd> 走位，<kbd>W</kbd> 起跳躲招（耗 15 能量，空中跳过地面攻击）</span></div>
         <div class="tut-cell"><b>轻击</b><span><kbd>J</kbd>（或鼠标左键），快速三段连招</span></div>
         <div class="tut-cell"><b>重击</b><span><kbd>K</kbd>，高伤害、破防、击倒，但起手慢</span></div>
         <div class="tut-cell"><b>格挡</b><span>按住 <kbd>L</kbd> 减伤；按下瞬间 0.15 秒内是完美弹反</span></div>

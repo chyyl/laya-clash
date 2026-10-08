@@ -41,6 +41,7 @@ export class Fighter {
     this.overloadT = 0;
     this.parryBuffT = 0;               // 弹反大师：下一击强化
     this.galeEcho = false;             // 疾风余威：疾风结束时爆发冲击波
+    this.denyT = 0;                    // 动作被拒反馈的节流
     this.cd = { gale: 0, jam: 0, dash: 0, jump: 0 };
     this.dead = false;
   }
@@ -58,6 +59,7 @@ export class Fighter {
     let d = base * this.mods.dmgMul;
     if (gale) d *= BASE.gale.dmgMul;
     if (exec && this.targetVulnerable && this.mods.ks.has('exec')) d *= 1.4;   // 抢攻大点：仅持有者受益
+    if (this.mods.ks.has('opening') && this.targetFull) d *= 1.25;             // 开局压制大点：对满血敌人
     if (this.overloadT > 0) d *= 1.3;
     if (this.parryBuffT > 0) d *= 1.5;
     return d;
@@ -65,6 +67,7 @@ export class Fighter {
 
   update(dt, opp, intent) {
     this.targetVulnerable = opp.vulnerable;
+    this.targetFull = opp.hp >= opp.hpMax;            // 开局压制大点
 
     // --- 计时器 ---
     const m = this.mods;
@@ -83,6 +86,7 @@ export class Fighter {
     this.overloadT = Math.max(0, this.overloadT - dt);
     this.parryBuffT = Math.max(0, this.parryBuffT - dt);
     this.parryT = Math.max(0, this.parryT - dt);
+    this.denyT = Math.max(0, this.denyT - dt);
     this.comboTimer = Math.max(0, this.comboTimer - dt);
     if (this.comboTimer === 0) this.comboIdx = -1;
     if (this.guardIdleT > 0) this.guardIdleT -= dt;
@@ -98,6 +102,7 @@ export class Fighter {
         this.y = 0; this.vy = 0;
         this.events.push({ type: 'land', x: this.x });
         if (this.state === 'idle') this._setState('land');   // 落地硬直（受控状态不受影响）
+        if (!this.dead && this.mods.ks.has('quake')) this._quake(opp);   // 落地震大点
       }
     }
     if (this.dead) { this.t += dt; return; }
@@ -362,8 +367,11 @@ export class Fighter {
   }
 
   _tryJump() {
-    if (!this.canAct() || this.cd.jump > 0) return;
+    if (!this.canAct()) return;
+    if (this.cd.jump > 0) { this._deny('冷却中'); return; }
+    if (this.energy < BASE.jump.cost) { this._deny('能量不足'); return; }
     if (this.state === 'block') this._setState('idle');
+    this.energy -= BASE.jump.cost;
     this.cd.jump = BASE.jump.cd;
     this.pending = null;
     this.vy = BASE.jump.v0;
@@ -399,8 +407,10 @@ export class Fighter {
   }
 
   _tryGale() {
-    if (!this.canAct() || this.silenceT > 0) return;
-    if (this.cd.gale > 0 || this.energy < BASE.gale.cost) return;
+    if (!this.canAct()) return;
+    if (this.silenceT > 0) { this._deny('被沉默'); return; }
+    if (this.cd.gale > 0) { this._deny('冷却中'); return; }
+    if (this.energy < BASE.gale.cost) { this._deny('能量不足'); return; }
     this.energy -= BASE.gale.cost;
     this.cd.gale = BASE.gale.cd * this.mods.skillCdMul;
     this.galeT = BASE.gale.dur;
@@ -427,9 +437,36 @@ export class Fighter {
     this.events.push({ type: 'shock', owner: this, connected, dmg: dealt, x: this.x });
   }
 
+  // 落地震大点：落地瞬间震击近身敌人
+  _quake(opp) {
+    const q = BASE.quake;
+    let connected = false, dealt = 0;
+    if (opp.alive && Math.abs(opp.x - this.x) <= q.range && opp.y <= BASE.jump.dodgeH) {
+      const res = opp.takeHit({
+        dmg: q.dmg, guard: 0, kb: q.kb, knockdown: false,
+        attacker: this, kind: 'jam', unblockable: false, source: this,
+      });
+      if (res.applied) {
+        connected = true;
+        dealt = res.dealt;
+        if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
+      }
+    }
+    this.events.push({ type: 'quake', owner: this, connected, dmg: dealt, x: this.x });
+  }
+
+  // 动作被拒时给玩家看得见的原因（0.6s 节流；AI 静默）
+  _deny(msg) {
+    if (this.denyT > 0 || !this.isPlayer) return;
+    this.denyT = 0.6;
+    this.events.push({ type: 'deny', x: this.x, msg });
+  }
+
   _tryJam(opp) {
-    if (!this.canAct() || this.silenceT > 0) return;
-    if (this.cd.jam > 0 || this.energy < BASE.jam.cost) return;
+    if (!this.canAct()) return;
+    if (this.silenceT > 0) { this._deny('被沉默'); return; }
+    if (this.cd.jam > 0) { this._deny('冷却中'); return; }
+    if (this.energy < BASE.jam.cost) { this._deny('能量不足'); return; }
     this.energy -= BASE.jam.cost;
     this.cd.jam = BASE.jam.cd * this.mods.skillCdMul;
     const dist = Math.abs(opp.x - this.x);

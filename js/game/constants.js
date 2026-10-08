@@ -30,7 +30,7 @@ export const BASE = {
   dash: { dur: 0.18, speed: 820, iframe: 0.13, cost: 12, cd: 0.55 },
 
   // 跳跃：起跳瞬时、重力弧线；空中不可出招/格挡；跳过 dodgeH 高度的地面攻击
-  jump: { v0: 780, gravity: 2400, cd: 0.45, airCtrl: 0.8, land: 0.16, dodgeH: 55 },
+  jump: { v0: 780, gravity: 2400, cd: 0.45, airCtrl: 0.8, land: 0.16, dodgeH: 55, cost: 15 },
   // 空时约 0.65s、滞空顶点约 127px；落地硬直 0.16s 是主要代价
 
   hitstunL: 0.22,
@@ -41,6 +41,7 @@ export const BASE = {
 
   gale: { cost: 40, cd: 6, dur: 3.0, dmgMul: 1.25, echo: { dmg: 10, range: 300, kb: 260, guard: 40 } },   // 疾风：攻击无视格挡+增伤；echo=疾风余威大点
   jam:  { cost: 35, cd: 8, range: 250, dmg: 9, kb: 430, guard: 45, silence: 1.5 }, // 干扰：击退+技能封锁
+  quake: { dmg: 6, range: 150, kb: 200 },   // 落地震大点：落地震地一击
 
   crit: { mult: 1.6, baseChance: 0.05 },
 

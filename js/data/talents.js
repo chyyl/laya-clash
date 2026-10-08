@@ -44,13 +44,17 @@ export const KEYSTONES = [
   { id: 'jamoverload',  name: '干扰过载', desc: '干扰命中后 3 秒内你的伤害 +30%' },
   { id: 'iron',         name: '铁血',     desc: '生命低于 30% 时，受到的伤害 -20%' },
   { id: 'exec',         name: '抢攻',     desc: '对硬直、倒地或被击退中的敌人伤害 +40%' },
+  { id: 'quake',        name: '落地震',   desc: '落地时震地爆发：范围内 6 伤害并击退' },
+  { id: 'opening',      name: '开局压制', desc: '对满血敌人的伤害 +25%' },
 ];
 
 export const PRESETS = [
   { id: 'balanced', name: '均衡',     stats: { dmg: 3, atkspd: 1, crit: 2, hp: 2, guard: 1, lifesteal: 0, move: 2, dash: 1, iframe: 0, energyMax: 1, energyRegen: 1, skillcd: 1 }, ks: ['chase', 'iron'] },
   { id: 'glass',    name: '玻璃大炮', stats: { dmg: 3, atkspd: 3, crit: 3, hp: 0, guard: 0, lifesteal: 1, move: 2, dash: 1, iframe: 0, energyMax: 0, energyRegen: 1, skillcd: 1 }, ks: ['chase', 'exec'] },
   { id: 'tank',     name: '铁壁',     stats: { dmg: 2, atkspd: 0, crit: 0, hp: 3, guard: 3, lifesteal: 2, move: 1, dash: 0, iframe: 0, energyMax: 1, energyRegen: 1, skillcd: 2 }, ks: ['iron', 'parrymaster'] },
-  { id: 'skirm',    name: '灵动',     stats: { dmg: 2, atkspd: 1, crit: 2, hp: 0, guard: 0, lifesteal: 0, move: 3, dash: 3, iframe: 2, energyMax: 0, energyRegen: 2, skillcd: 2 }, ks: ['chase', 'galeecho'] },
+  { id: 'skirm',    name: '灵动',     stats: { dmg: 2, atkspd: 1, crit: 1, hp: 0, guard: 0, lifesteal: 0, move: 3, dash: 3, iframe: 2, energyMax: 0, energyRegen: 1, skillcd: 2 }, ks: ['chase', 'galeecho'] },
+  { id: 'drain',    name: '蚀骨',     stats: { dmg: 2, atkspd: 1, crit: 1, hp: 2, guard: 1, lifesteal: 3, move: 1, dash: 0, iframe: 0, energyMax: 1, energyRegen: 1, skillcd: 2 }, ks: ['iron', 'jamoverload'] },
+  { id: 'berserk',  name: '狂战',     stats: { dmg: 3, atkspd: 3, crit: 3, hp: 0, guard: 0, lifesteal: 0, move: 2, dash: 2, iframe: 0, energyMax: 0, energyRegen: 1, skillcd: 1 }, ks: ['chase', 'exec'] },
 ];
 
 export function emptyBuild() {

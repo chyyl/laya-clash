@@ -1,3 +1,5 @@
+import { BASE } from './constants.js';
+
 // 分层 AI：计划（approach/attack/defend/retreat）+ 反应延迟（看到起手后才决策）
 // 难度参数见 data/aiBuilds.js。AI 与玩家共用 Fighter API，作弊仅限“读帧”（已知起手阶段）。
 export class AIBrain {
@@ -52,7 +54,7 @@ export class AIBrain {
     } else if (pl.type === 'attack') {
       if (dist > reach + 18) intent.axis = dirToFoe;      // 贴上去继续打
       else if (dist < 46) intent.axis = -dirToFoe * 0.5;  // 防重叠
-      if (dist < reach + 12 && !this.blockHold && foe.y < 40) {   // 对方跳在空中时不挥空拳
+      if (dist < reach + 12 && !this.blockHold && foe.y <= BASE.jump.dodgeH) {   // 贴地跳照样打，跳过头顶才收手
         const chainChance = p.combo;
         if (Math.random() < chainChance) {
           intent.actions.push(Math.random() < 0.22 ? 'heavy' : 'light');
@@ -78,8 +80,8 @@ export class AIBrain {
       intent.actions.push(pl.skill);
       this.plan = { type: 'attack', t: 0.6 };
     } else if (pl.type === 'punish') {
-      if (dist < reach + 14 && foe.y < 40) intent.actions.push('heavy');
-      else if (foe.y >= 40) { /* 对方滞空：等他落地 */ }
+      if (dist < reach + 14 && foe.y <= BASE.jump.dodgeH) intent.actions.push('heavy');
+      else if (foe.y > BASE.jump.dodgeH) { /* 跳过头顶：等他落地 */ }
       else intent.axis = dirToFoe;
     } else if (pl.type === 'dashIn') {
       intent.axis = dirToFoe;
@@ -144,8 +146,8 @@ export class AIBrain {
     // 失误：该动手时发呆
     if (r < p.mistake) { this.plan = { type: 'wait', t: 0.3 + Math.random() * 0.4 }; return; }
 
-    // 技能决策
-    if (me.silenceT <= 0 && r < p.skill) {
+    // 技能决策（独立掷骰：早前与失误共用 r，rookie 两值相等导致永不施法）
+    if (me.silenceT <= 0 && Math.random() < p.skill) {
       const galeReady = me.cd.gale <= 0 && me.energy >= 40;
       const jamReady = me.cd.jam <= 0 && me.energy >= 35;
       if (galeReady && dist < 260) { this.plan = { type: 'cast', t: 0.1, skill: 'gale' }; return; }
