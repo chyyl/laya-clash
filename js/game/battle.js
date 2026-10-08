@@ -229,6 +229,16 @@ export class Battle {
         fx.spark(e.x, 520, owner.facing * 0.4, '#ff4fd8', 14, 420);
         if (e.connected) fx.text(owner.facing * 0.5 + e.x, 452, '干扰!', '#ff4fd8', 28);
         break;
+      case 'shock':                                        // 疾风余威：疾风结束的冲击波
+        AudioFX.play('jam');
+        fx.ring(e.x + owner.facing * 30, 530, BASE.gale.echo.range * 0.6, '#ffd23f', 0.5);
+        fx.spark(e.x, 520, 0, '#ffd23f', 12, 380);
+        if (e.connected) {
+          fx.text(e.x + owner.facing * 70, 448, '余威!', '#ffd23f', 26);
+          this.crowdHeat = Math.min(1, this.crowdHeat + 0.3);
+          if (owner.isPlayer) this.dmgDealt += e.dmg;
+        }
+        break;
       case 'ko': {
         AudioFX.play('ko');
         AudioFX.play('cheer');

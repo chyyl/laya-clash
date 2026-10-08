@@ -40,6 +40,7 @@ export class Fighter {
     this.chaseT = 0;
     this.overloadT = 0;
     this.parryBuffT = 0;               // 弹反大师：下一击强化
+    this.galeEcho = false;             // 疾风余威：疾风结束时爆发冲击波
     this.cd = { gale: 0, jam: 0, dash: 0, jump: 0 };
     this.dead = false;
   }
@@ -49,13 +50,14 @@ export class Fighter {
     return this.state === 'stagger' || this.state === 'down' || this.state === 'getup'
         || this.state === 'hitstun' || this.state === 'dead';
   }
+  get chaseMul() { return this.chaseT > 0 ? 1.25 : 1; }   // 追击大点：2 秒内移速/攻速 +25%
 
   canAct() { return (this.state === 'idle' || this.state === 'block') && this.y === 0; }
 
   effDmg(base, { gale = false, exec = false } = {}) {
     let d = base * this.mods.dmgMul;
     if (gale) d *= BASE.gale.dmgMul;
-    if (exec && this.targetVulnerable) d *= 1.4;
+    if (exec && this.targetVulnerable && this.mods.ks.has('exec')) d *= 1.4;   // 抢攻大点：仅持有者受益
     if (this.overloadT > 0) d *= 1.3;
     if (this.parryBuffT > 0) d *= 1.5;
     return d;
@@ -74,7 +76,9 @@ export class Fighter {
     this.iframeT = Math.max(0, this.iframeT - dt);
     this.invulnT = Math.max(0, this.invulnT - dt);
     this.silenceT = Math.max(0, this.silenceT - dt);
+    const galeWas = this.galeT > 0;
     this.galeT = Math.max(0, this.galeT - dt);
+    if (galeWas && this.galeT === 0 && this.galeEcho && !this.dead) this._echo(opp);   // 疾风余威：结束时爆发
     this.chaseT = Math.max(0, this.chaseT - dt);
     this.overloadT = Math.max(0, this.overloadT - dt);
     this.parryBuffT = Math.max(0, this.parryBuffT - dt);
@@ -122,7 +126,7 @@ export class Fighter {
 
     // --- 空中：受限水平操控，不可出招/格挡 ---
     if (this.y > 0) {
-      const sp = BASE.moveSpeed * m.moveMul * BASE.jump.airCtrl;
+      const sp = BASE.moveSpeed * m.moveMul * this.chaseMul * BASE.jump.airCtrl;
       this.vx = (intent.axis || 0) * sp;
       this.x += this.vx * dt;
       return;
@@ -133,7 +137,7 @@ export class Fighter {
     if (this.blocking) { this.guardIdleT = BASE.guardDelay; }
 
     // 移动
-    const sp = BASE.moveSpeed * m.moveMul * (this.state === 'block' ? BASE.blockSpeed : 1);
+    const sp = BASE.moveSpeed * m.moveMul * this.chaseMul * (this.state === 'block' ? BASE.blockSpeed : 1);
     const mv = (intent.axis || 0) * sp;
     this.vx = mv;
     this.x += this.vx * dt;
@@ -190,7 +194,7 @@ export class Fighter {
   _startAttack(step) {
     const m = this.mods;
     const src = step < 0 ? BASE.heavy : BASE.light[step];
-    const spd = m.atkSpdMul;
+    const spd = m.atkSpdMul * this.chaseMul;
     const data = {
       ...src,
       windup: src.windup / spd, active: src.active / spd, rec: src.rec / spd,
@@ -270,7 +274,6 @@ export class Fighter {
     }
     if (crit) this.chaseT = 2;
     if (this.parryBuffT > 0) this.parryBuffT = 0;
-    if (this.chaseT > 0) { /* 追击 buff 持续中 */ }
 
     this.events.push({
       type: 'hit', attacker: this, target: opp, kind: d.heavy ? 'heavy' : 'light',
@@ -291,8 +294,8 @@ export class Fighter {
     let dmg = hit.dmg;
     let blocked = false;
 
-    // 铁血：低血量减伤
-    if (this.hp < this.hpMax * 0.3) dmg *= 0.8;
+    // 铁血：低血量减伤（仅持有大点者）
+    if (this.mods.ks.has('iron') && this.hp < this.hpMax * 0.3) dmg *= 0.8;
 
     if (this.state === 'block') {
       if (this.parryT > 0 && !hit.unblockable) {
@@ -300,7 +303,7 @@ export class Fighter {
         this.parryT = 0;
         this.guard = Math.min(this.guardMax, this.guard + 10);
         hit.attacker.getStaggered(BASE.parriedStagger);
-        if (hit.attacker.mods.ks.has('parrymaster')) this.parryBuffT = 2;
+        if (this.mods.ks.has('parrymaster')) this.parryBuffT = 2;   // 门控在弹反者本人
         this.events.push({ type: 'parry', x: px, y: py, defender: this, attacker: hit.attacker });
         return { applied: true, dealt: 0, blocked: true, parried: true, x: px, y: py };
       }
@@ -403,6 +406,25 @@ export class Fighter {
     this.galeT = BASE.gale.dur;
     if (this.mods.ks.has('galeecho')) this.galeEcho = true;
     this.events.push({ type: 'gale', owner: this });
+  }
+
+  // 疾风余威大点：疾风结束时爆发地面冲击波（可跳跃越过）
+  _echo(opp) {
+    this.galeEcho = false;
+    const e = BASE.gale.echo;
+    let connected = false, dealt = 0;
+    if (opp.alive && Math.abs(opp.x - this.x) <= e.range && opp.y <= BASE.jump.dodgeH) {
+      const res = opp.takeHit({
+        dmg: e.dmg, guard: e.guard, kb: e.kb, knockdown: false,
+        attacker: this, kind: 'jam', unblockable: false, source: this,
+      });
+      if (res.applied) {
+        connected = true;
+        dealt = res.dealt;
+        if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
+      }
+    }
+    this.events.push({ type: 'shock', owner: this, connected, dmg: dealt, x: this.x });
   }
 
   _tryJam(opp) {
