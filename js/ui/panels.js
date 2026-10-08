@@ -82,7 +82,12 @@ export function renderRecords() {
     const t = p.w + p.l;
     const wr = t ? Math.round(p.w / t * 100) : 0;
     return `<tr><td>${d.tier} · ${d.name}</td><td>${t}</td><td class="win">${p.w}</td><td>${p.l}</td><td>${wr}%</td></tr>`;
-  }).join('');
+  }).join('') + (() => {                      // 联机对战单独一行（perDiff.net 动态键）
+    const p = per.net;
+    if (!p || p.w + p.l <= 0) return '';
+    const t = p.w + p.l, wr = Math.round(p.w / t * 100);
+    return `<tr><td>PVP · 联机对战</td><td>${t}</td><td class="win">${p.w}</td><td>${p.l}</td><td>${wr}%</td></tr>`;
+  })();
 
   $('records-body').innerHTML = `
     <div class="rec-grid">

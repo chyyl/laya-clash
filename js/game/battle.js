@@ -17,15 +17,17 @@ export class Battle {
     this.ann = null;
     this.clock = 0;
     this.player = null;
+    this.net = false;      // 联机标志（reset 时置位）：foe 远端驱动 + 事件外发
   }
 
-  // 每局开打前调用（也用于再战重开）
-  reset({ playerBuild, playerSkills, aiName, aiBuild, diffParams, diff }) {
+  // 每局开打前调用（也用于再战重开）。net=true 为联机局：foe 由远端驱动，不跑 AI。
+  reset({ playerBuild, playerSkills, aiName, aiBuild, diffParams, diff, net = false }) {
     this.playerBuild = playerBuild;
     this.aiName = aiName;
     this.aiBuildData = aiBuild;
     this.diff = diff;
     this.diffParams = diffParams;
+    this.net = net;
 
     const pMods = derive(playerBuild);
     const fMods = derive(aiBuild.build);
@@ -45,8 +47,13 @@ export class Battle {
     this.matchT = 0;
     this.scale = 1;
     this.combo = { n: 0, t: 0, peak: 0 };
+    this.fCombo = { n: 0, t: 0, peak: 0 };   // 访客侧连击（联机局 foe 的攻击计数）
     this.dmgDealt = 0;
-    this.crowdHeat = 0;                  // 观众热度 0..1：重击/弹反点燃，随时间消退
+    this.fDmgDealt = 0;
+    this.netEvBuf = [];                      // 联机房主：待外发的本帧事件（packState 取走）
+    this.netQ = [];                          // 访客：待消费的状态帧
+    this.lastSnap = null;                    // 访客：最近一帧 HUD 快照
+    this.crowdHeat = 0;                      // 观众热度 0..1：重击/弹反点燃，随时间消退
     this.clock = 0;
     this.ann = { text: 'READY', cls: '', until: 1.0 };
     this.result = null;
@@ -100,9 +107,12 @@ export class Battle {
     this.matchT += wdt;
     this.combo.t -= wdt;
     if (this.combo.t <= 0) this.combo.n = 0;
+    this.fCombo.t -= wdt;
+    if (this.fCombo.t <= 0) this.fCombo.n = 0;
 
     const pIntent = this.inputOn ? input.pIntent() : { axis: 0, actions: [], block: false };
-    const fIntent = this.ai.update(wdt);
+    // 联机局 foe 意图来自远端访客（input.fIntent）；否则本地 AI
+    const fIntent = input.fIntent ? input.fIntent() : this.ai.update(wdt);
 
     this.player.update(wdt, this.foe, pIntent);
     this.foe.update(wdt, this.player, fIntent);
@@ -145,6 +155,8 @@ export class Battle {
     if (!f.events.length) return;
     const evs = f.events.slice();
     f.events.length = 0;
+    // 联机房主：事件先记账待外发，再本地演出（packState 取走并清空）
+    if (this.net) this.netEvBuf.push({ src: f.isPlayer ? 'p' : 'f', evs });
     for (const e of evs) this._handle(e, f);
   }
 
@@ -181,15 +193,23 @@ export class Battle {
         if (e.kind === 'heavy' && !e.blocked) {
           fx.comic(e.x + e.attacker.facing * 40, 452, ['哐!', '嘭!', '砰!'][(Math.random() * 3) | 0], '#ff5f6d', 32);
         }
-        if (e.attacker.isPlayer && !e.blocked) {
-          this.combo.n++;
-          this.combo.t = BASE.comboReset;
-          this.combo.peak = Math.max(this.combo.peak, this.combo.n);
-          this.dmgDealt += e.dmg;
-          AudioFX.play('hitConfirm');
-          // 连击里程碑：网络热梗弹幕
-          const milestone = { 5: '666!', 9: '起飞!', 13: '天花板!', 17: '不是人!' };
-          if (milestone[this.combo.n]) fx.comic(e.x, 430, milestone[this.combo.n], '#ffd23f', 34);
+        if (!e.blocked) {
+          const mine = e.attacker.isPlayer;
+          if (mine || this.net) {                    // 联机局双方连击都计（各记各的账）
+            const c = mine ? this.combo : this.fCombo;
+            c.n++;
+            c.t = BASE.comboReset;
+            c.peak = Math.max(c.peak, c.n);
+            if (mine) {
+              this.dmgDealt += e.dmg;
+              AudioFX.play('hitConfirm');
+            } else {
+              this.fDmgDealt += e.dmg;
+            }
+            // 连击里程碑：网络热梗弹幕
+            const milestone = { 5: '666!', 9: '起飞!', 13: '天花板!', 17: '不是人!' };
+            if (milestone[c.n]) fx.comic(e.x, 430, milestone[c.n], '#ffd23f', 34);
+          }
         }
         break;
       }
@@ -240,6 +260,7 @@ export class Battle {
           fx.text(e.x + owner.facing * 70, 448, '余威!', '#ffd23f', 26);
           this.crowdHeat = Math.min(1, this.crowdHeat + 0.3);
           if (owner.isPlayer) this.dmgDealt += e.dmg;
+          else if (this.net) this.fDmgDealt += e.dmg;
         }
         break;
       case 'upper':                                         // 破空：上挑
@@ -250,6 +271,7 @@ export class Battle {
           fx.text(e.x, e.airborne ? 424 : 452, e.airborne ? '升天!' : '挑空!', '#9be7ff', 26);
           this.crowdHeat = Math.min(1, this.crowdHeat + 0.2);
           if (owner.isPlayer) this.dmgDealt += e.dmg;
+          else if (this.net) this.fDmgDealt += e.dmg;
         } else {
           fx.ring(e.x + owner.facing * 40, 540, 70, '#9be7ff', 0.3);
         }
@@ -277,6 +299,7 @@ export class Battle {
           fx.text(e.x + owner.facing * 50, 452, '震地!', '#ffd23f', 26);
           this.crowdHeat = Math.min(1, this.crowdHeat + 0.25);
           if (owner.isPlayer) this.dmgDealt += e.dmg;
+          else if (this.net) this.fDmgDealt += e.dmg;
         }
         break;
       case 'deny':                                          // 动作被拒的原因提示
@@ -328,6 +351,29 @@ export class Battle {
     }
   }
 
+  // ---------------- 联机（访客侧） ----------------
+  // 状态帧入队；netTick 按“事件先演、状态后覆”的顺序消费——
+  // 里程碑判定读的是本帧事件发生前的连击数，与房主侧口径一致。
+  // 落后太多只留最近几帧：切回前台快速追上，不补演一串音效。
+  netApply(unit) {
+    this.netQ.push(unit);
+    if (this.netQ.length > 6) this.netQ.splice(0, this.netQ.length - 3);
+  }
+
+  netTick(dt) {
+    this.clock += dt;
+    for (const u of this.netQ) {
+      for (const it of u.ev) this._handle(it.e, it.owner);
+      Object.assign(this.player, u.p);
+      Object.assign(this.foe, u.f);
+      Object.assign(this, u.b);
+      this.koLoser = u.koLoser;
+      this.lastSnap = u.snap;
+    }
+    this.netQ.length = 0;
+    this.fx.update(dt);
+  }
+
   render() {
     const ctx = this.ctx;
     const [sx, sy] = this.fx.shakeOffset();
@@ -349,6 +395,8 @@ export class Battle {
       f: this.foe.snapshot(),
       combo: this.combo.n,
       comboOn: this.combo.t > 0 && this.combo.n >= 2,
+      fCombo: this.fCombo.n,
+      fComboOn: this.fCombo.t > 0 && this.fCombo.n >= 2,
       announce: this.ann,
       aiName: this.aiName,
       aiBuild: this.aiBuildData.name,

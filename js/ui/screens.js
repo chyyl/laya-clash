@@ -1,6 +1,6 @@
 // 屏幕路由：显示/隐藏各 .screen；data-go 按钮统一走 onGo 回调
 const SCREENS = ['screen-menu', 'screen-diff', 'screen-talent', 'screen-tutorial',
-  'screen-settings', 'screen-records', 'screen-result', 'screen-pause'];
+  'screen-settings', 'screen-records', 'screen-result', 'screen-pause', 'screen-net'];
 
 let current = 'menu';
 let onGo = null;

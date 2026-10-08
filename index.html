@@ -90,6 +90,7 @@
     </header>
     <nav class="menu-nav">
       <button class="btn btn-primary btn-xl" data-go="diff">开始对战<kbd>Enter</kbd></button>
+      <button class="btn" data-go="net">联机对战<i>与好友 P2P 对打</i></button>
       <button class="btn" data-go="talent">天赋装配<i>点数随时可改</i></button>
       <button class="btn" data-go="tutorial">教程<i>操作与机制</i></button>
       <button class="btn" data-go="settings">设置<i>音量 · 画面 · 操控</i></button>
@@ -224,6 +225,38 @@
     <div id="records-body"><!-- JS --></div>
   </section>
 
+  <!-- ================= 联机对战 ================= -->
+  <section id="screen-net" class="screen hidden">
+    <div class="screen-head">
+      <button class="btn-back" data-go="menu">&larr; 返回</button>
+      <h2>联机对战</h2>
+      <div class="head-note" id="net-status">未连接 · 与好友互发房间码即可开打</div>
+    </div>
+    <div class="net-grid">
+      <div class="side-card net-card">
+        <h3>创建房间 <em>你当房主 · 战斗判定在本机</em></h3>
+        <p class="net-steps">1 生成房间码，整段发给好友<br>2 粘贴好友回传的应答码，完成连接</p>
+        <button id="net-host" class="btn btn-primary">生成房间码</button>
+        <textarea id="net-offer" class="net-code" readonly placeholder="点击上方按钮后，复制这里发给好友"></textarea>
+        <textarea id="net-answer" class="net-code" placeholder="粘贴好友发回的应答码"></textarea>
+        <button id="net-apply" class="btn">完成连接</button>
+      </div>
+      <div class="side-card net-card">
+        <h3>加入房间 <em>你是访客 · 出招送往房主</em></h3>
+        <p class="net-steps">1 粘贴房主发来的房间码，生成应答码<br>2 把应答码整段发回房主</p>
+        <textarea id="net-offer-in" class="net-code" placeholder="粘贴房主发来的房间码"></textarea>
+        <button id="net-join" class="btn btn-primary">生成应答码</button>
+        <textarea id="net-answer-out" class="net-code" readonly placeholder="点击上方按钮后，复制这里发回房主"></textarea>
+      </div>
+    </div>
+    <div class="net-foot">
+      <div class="net-peer" id="net-peer">等待连接…</div>
+      <button id="net-start" class="btn btn-primary btn-xl" disabled>开始对战</button>
+      <div id="net-wait" class="net-wait hidden">等待房主开局…</div>
+      <button id="net-leave" class="btn btn-ghost hidden">断开连接</button>
+    </div>
+  </section>
+
   <!-- ================= 结算 ================= -->
   <section id="screen-result" class="screen hidden">
     <div id="result-stamp" class="stamp">胜利</div>
@@ -257,7 +290,7 @@
 
   <!-- ================= VS 过场 ================= -->
   <div id="vs-layer" class="layer hidden">
-    <div class="vs-plate left"><div class="vs-name">挑战者</div><div class="vs-build" id="vs-pbuild">均衡流</div></div>
+    <div class="vs-plate left"><div class="vs-name" id="vs-pname">挑战者</div><div class="vs-build" id="vs-pbuild">均衡流</div></div>
     <div class="vs-mark">VS</div>
     <div class="vs-plate right"><div class="vs-name" id="vs-aname">对手</div><div class="vs-build" id="vs-abuild">均衡流</div></div>
   </div>
