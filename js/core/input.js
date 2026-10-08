@@ -8,7 +8,7 @@ const KEYMAP = {
   KeyK: 'heavy', KeyX: 'heavy',
   Space: 'dash', ShiftLeft: 'dash', ShiftRight: 'dash',
   KeyL: 'block', KeyS: 'block',
-  KeyQ: 'gale', KeyE: 'jam',
+  KeyQ: 's1', KeyE: 's2',              // 技能槽：内容由装配决定（Q=槽0，E=槽1）
 };
 
 const keys = new Set();          // 按住的逻辑键
@@ -30,13 +30,14 @@ export const Input = {
       const act = KEYMAP[e.code];
       if (!act) return;
       e.preventDefault();
+      // 按住型（移动/格挡）直接进按住集合：repeat 也无妨（幂等），松手才出
+      if (act === 'left' || act === 'right' || act === 'block') { keys.add(act); return; }
       if (e.repeat) return;
-      if (act === 'left' || act === 'right') keys.add(act);
-      else press(act);
+      press(act);
     });
     window.addEventListener('keyup', (e) => {
       const act = KEYMAP[e.code];
-      if (act === 'left' || act === 'right') keys.delete(act);
+      if (act === 'left' || act === 'right' || act === 'block') keys.delete(act);
     });
     window.addEventListener('blur', () => { keys.clear(); joyX = 0; touchBlock = false; });
 
@@ -111,6 +112,12 @@ export const Input = {
   },
 
   setEnabled(v) { enabled = v; if (!v) queue.length = 0; },
+  // 触控技能按钮改名（跟随装配；HUD 槽位由 hud.js 按快照刷新）
+  setSkillLabels(names) {
+    const set = (act, name) => document.querySelectorAll('.tbtn[data-act="' + act + '"]')
+      .forEach((b) => { b.textContent = name; b.setAttribute('aria-label', name); });
+    set('s1', names[0]); set('s2', names[1]);
+  },
   consume() { const q = queue.slice(); queue.length = 0; return q; },
   axisX() {
     let x = joyX;

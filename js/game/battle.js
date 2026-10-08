@@ -5,6 +5,7 @@ import { FX } from './fx.js';
 import { drawArena } from './arena.js';
 import { drawFighter } from './render.js';
 import { derive } from '../data/talents.js';
+import { SKILLS, normalizeLoadout } from '../data/skills.js';
 import { AudioFX } from '../core/audio.js';
 
 // 单场对战编排：阶段机（intro/fight/ko/over）、事件消费、胜负结算
@@ -19,7 +20,7 @@ export class Battle {
   }
 
   // 每局开打前调用（也用于再战重开）
-  reset({ playerBuild, aiName, aiBuild, diffParams, diff }) {
+  reset({ playerBuild, playerSkills, aiName, aiBuild, diffParams, diff }) {
     this.playerBuild = playerBuild;
     this.aiName = aiName;
     this.aiBuildData = aiBuild;
@@ -28,6 +29,8 @@ export class Battle {
 
     const pMods = derive(playerBuild);
     const fMods = derive(aiBuild.build);
+    pMods.skills = normalizeLoadout(playerSkills);       // 玩家装配（天赋页保存）
+    fMods.skills = normalizeLoadout(aiBuild.skills);     // AI 按预设流派配技能
     this.player = new Fighter({ name: '挑战者', color: '#3df2ff', mods: pMods, isPlayer: true });
     this.foe = new Fighter({ name: aiName, color: '#ff3c5f', mods: fMods, isPlayer: false });
     this.ai = new AIBrain(this.foe, this.player, diffParams.ai);
@@ -225,19 +228,46 @@ export class Battle {
         break;
       case 'jam':
         AudioFX.play('jam');
-        fx.ring(e.x, 530, BASE.jam.range, '#ff4fd8', 0.5);
+        fx.ring(e.x, 530, SKILLS.jam.range, '#ff4fd8', 0.5);
         fx.spark(e.x, 520, owner.facing * 0.4, '#ff4fd8', 14, 420);
         if (e.connected) fx.text(owner.facing * 0.5 + e.x, 452, '干扰!', '#ff4fd8', 28);
         break;
       case 'shock':                                        // 疾风余威：疾风结束的冲击波
         AudioFX.play('jam');
-        fx.ring(e.x + owner.facing * 30, 530, BASE.gale.echo.range * 0.6, '#ffd23f', 0.5);
+        fx.ring(e.x + owner.facing * 30, 530, SKILLS.gale.echo.range * 0.6, '#ffd23f', 0.5);
         fx.spark(e.x, 520, 0, '#ffd23f', 12, 380);
         if (e.connected) {
           fx.text(e.x + owner.facing * 70, 448, '余威!', '#ffd23f', 26);
           this.crowdHeat = Math.min(1, this.crowdHeat + 0.3);
           if (owner.isPlayer) this.dmgDealt += e.dmg;
         }
+        break;
+      case 'upper':                                         // 破空：上挑
+        AudioFX.play('whoosh');
+        if (e.connected) {
+          AudioFX.play('hitH');
+          fx.spark(e.x, 500, -Math.PI / 2, '#9be7ff', 14, 420);
+          fx.text(e.x, e.airborne ? 424 : 452, e.airborne ? '升天!' : '挑空!', '#9be7ff', 26);
+          this.crowdHeat = Math.min(1, this.crowdHeat + 0.2);
+          if (owner.isPlayer) this.dmgDealt += e.dmg;
+        } else {
+          fx.ring(e.x + owner.facing * 40, 540, 70, '#9be7ff', 0.3);
+        }
+        break;
+      case 'bulwark':                                       // 壁垒：展开减伤
+        AudioFX.play('block');
+        fx.ring(e.x, 520, 92, '#7dffb0', 0.6);
+        fx.text(e.x, 452, '壁垒!', '#7dffb0', 24);
+        break;
+      case 'siphon':                                        // 吸噬：展开回血
+        AudioFX.play('gale');
+        fx.ring(e.x, 520, 82, '#b48cff', 0.6);
+        fx.text(e.x, 452, '吸噬!', '#b48cff', 24);
+        break;
+      case 'shadow':                                        // 影袭：瞬移残影
+        AudioFX.play('dash');
+        fx.spark(e.x, 510, e.dir > 0 ? 0 : Math.PI, '#c9a2ff', 10, 320);
+        fx.text(e.x, 452, '影袭!', '#c9a2ff', 24);
         break;
       case 'quake':                                         // 落地震大点
         AudioFX.play('land');

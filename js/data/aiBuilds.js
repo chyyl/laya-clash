@@ -7,8 +7,21 @@ const BUILD_NAMES = {
 };
 
 export function aiBuild(presetId) {
-  return { id: presetId, name: BUILD_NAMES[presetId], build: presetBuild(presetId) };
+  return {
+    id: presetId, name: BUILD_NAMES[presetId], build: presetBuild(presetId),
+    skills: BUILD_SKILLS[presetId] || ['gale', 'jam'],
+  };
 }
+
+// 每套预设配一双技能（与流派气质对齐）
+const BUILD_SKILLS = {
+  balanced: ['gale', 'jam'],
+  glass: ['gale', 'upper'],
+  tank: ['bulwark', 'jam'],
+  skirm: ['shadow', 'gale'],
+  drain: ['siphon', 'jam'],
+  berserk: ['upper', 'gale'],
+};
 
 // 按场次轮换流派：同一个难度也会换装配
 export function rotateBuild(diffId, rotation) {

@@ -1,7 +1,10 @@
 // 战斗 HUD：血条/能量/格挡/技能冷却/连击/播报（全部 DOM，按快照每帧刷新）
+import { SKILLS } from '../data/skills.js';
+
 const $ = (id) => document.getElementById(id);
 
 let el = {};
+const skLastIds = [null, null];         // 装配缓存：槽位技能变了才写 DOM
 
 export const HUD = {
   init() {
@@ -16,9 +19,8 @@ export const HUD = {
       combo: $('combo'), comboX: $('combo-x'),
       ann: $('announce'), annText: $('announce-text'),
       silence: $('silence-tag'),
-      gale: $('sk-gale'), jam: $('sk-jam'),
-      galeCd: $('sk-gale').querySelector('.skill-cd'),
-      jamCd: $('sk-jam').querySelector('.skill-cd'),
+      sk: [$('sk-1'), $('sk-2')],
+      skCd: [$('sk-1').querySelector('.skill-cd'), $('sk-2').querySelector('.skill-cd')],
     };
   },
 
@@ -63,15 +65,22 @@ export const HUD = {
     this._bar(el.pgd, snap.p.guard, snap.p.guardMax);
     this._bar(el.egd, snap.f.guard, snap.f.guardMax);
 
-    // 技能架
-    const gP = snap.p.galeMax ? snap.p.gale / snap.p.galeMax : 0;
-    const jP = snap.p.jamMax ? snap.p.jam / snap.p.jamMax : 0;
-    el.galeCd.style.setProperty('--p', gP);
-    el.jamCd.style.setProperty('--p', jP);
-    el.gale.classList.toggle('ready', snap.p.gale <= 0 && snap.p.energy >= 40 && !snap.p.silence);
-    el.gale.classList.toggle('no-energy', snap.p.energy < 40 || snap.p.silence);
-    el.jam.classList.toggle('ready', snap.p.jam <= 0 && snap.p.energy >= 35 && !snap.p.silence);
-    el.jam.classList.toggle('no-energy', snap.p.energy < 35 || snap.p.silence);
+    // 技能架（槽位制：名字/能耗随装配，冷却环按槽位）
+    const ids = snap.p.skills || ['gale', 'jam'];
+    for (let i = 0; i < 2; i++) {
+      const sk = SKILLS[ids[i]];
+      const node = el.sk[i];
+      if (skLastIds[i] !== ids[i]) {
+        skLastIds[i] = ids[i];
+        node.querySelector('.skill-name').textContent = sk.name;
+        node.querySelector('.skill-cost').textContent = sk.cost;
+      }
+      const cd = snap.p['s' + (i + 1)];
+      const max = snap.p['s' + (i + 1) + 'Max'];
+      el.skCd[i].style.setProperty('--p', max ? cd / max : 0);
+      node.classList.toggle('ready', cd <= 0 && snap.p.energy >= sk.cost && !snap.p.silence);
+      node.classList.toggle('no-energy', snap.p.energy < sk.cost || snap.p.silence);
+    }
 
     // 连击
     if (snap.comboOn) {

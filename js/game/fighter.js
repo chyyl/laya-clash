@@ -1,4 +1,5 @@
 import { BASE, ARENA } from './constants.js';
+import { SKILLS } from '../data/skills.js';
 
 // 战斗实体：状态机 + 资源（生命/能量/格挡）+ buff 计时
 // 所有对外反馈走 events 队列，由 battle 统一消费（音效/演出/HUD），保持实体无 IO。
@@ -42,7 +43,10 @@ export class Fighter {
     this.parryBuffT = 0;               // 弹反大师：下一击强化
     this.galeEcho = false;             // 疾风余威：疾风结束时爆发冲击波
     this.denyT = 0;                    // 动作被拒反馈的节流
-    this.cd = { gale: 0, jam: 0, dash: 0, jump: 0 };
+    this.cd = { s1: 0, s2: 0, dash: 0, jump: 0 };
+    this.bulwarkT = 0;                   // 壁垒：减伤 + 格挡不耗
+    this.siphonT = 0;                    // 吸噬：命中回血
+    this.shadowBuff = false;             // 影袭：下一击强化（落地命中才消耗）
     this.dead = false;
   }
 
@@ -57,7 +61,8 @@ export class Fighter {
 
   effDmg(base, { gale = false, exec = false } = {}) {
     let d = base * this.mods.dmgMul;
-    if (gale) d *= BASE.gale.dmgMul;
+    if (gale) d *= SKILLS.gale.dmgMul;
+    if (this.shadowBuff) d *= SKILLS.shadow.buff;
     if (exec && this.targetVulnerable && this.mods.ks.has('exec')) d *= 1.4;   // 抢攻大点：仅持有者受益
     if (this.mods.ks.has('opening') && this.targetFull) d *= 1.25;             // 开局压制大点：对满血敌人
     if (this.overloadT > 0) d *= 1.3;
@@ -72,8 +77,8 @@ export class Fighter {
     // --- 计时器 ---
     const m = this.mods;
     this.energy = Math.min(this.energyMax, this.energy + BASE.energyRegen * m.energyRegenMul * dt);
-    this.cd.gale = Math.max(0, this.cd.gale - dt);
-    this.cd.jam = Math.max(0, this.cd.jam - dt);
+    this.cd.s1 = Math.max(0, this.cd.s1 - dt);
+    this.cd.s2 = Math.max(0, this.cd.s2 - dt);
     this.cd.dash = Math.max(0, this.cd.dash - dt);
     this.cd.jump = Math.max(0, this.cd.jump - dt);
     this.iframeT = Math.max(0, this.iframeT - dt);
@@ -84,6 +89,8 @@ export class Fighter {
     if (galeWas && this.galeT === 0 && this.galeEcho && !this.dead) this._echo(opp);   // 疾风余威：结束时爆发
     this.chaseT = Math.max(0, this.chaseT - dt);
     this.overloadT = Math.max(0, this.overloadT - dt);
+    this.bulwarkT = Math.max(0, this.bulwarkT - dt);
+    this.siphonT = Math.max(0, this.siphonT - dt);
     this.parryBuffT = Math.max(0, this.parryBuffT - dt);
     this.parryT = Math.max(0, this.parryT - dt);
     this.denyT = Math.max(0, this.denyT - dt);
@@ -154,8 +161,8 @@ export class Fighter {
       else if (act === 'heavy') this._tryHeavy();
       else if (act === 'dash') this._tryDash(intent);
       else if (act === 'jump') this._tryJump();
-      else if (act === 'gale') this._tryGale();
-      else if (act === 'jam') this._tryJam(opp);
+      else if (act === 's1') this._trySkill(0, opp, intent);
+      else if (act === 's2') this._trySkill(1, opp, intent);
     }
 
     // 格挡按住
@@ -199,7 +206,7 @@ export class Fighter {
   _startAttack(step) {
     const m = this.mods;
     const src = step < 0 ? BASE.heavy : BASE.light[step];
-    const spd = m.atkSpdMul * this.chaseMul;
+    const spd = m.atkSpdMul * this.chaseMul * (this.galeT > 0 ? SKILLS.gale.spdBonus : 1);
     const data = {
       ...src,
       windup: src.windup / spd, active: src.active / spd, rec: src.rec / spd,
@@ -238,8 +245,8 @@ export class Fighter {
           const p = this.pending; this.pending = null;
           if (p === 'light') this._tryLight();
           else if (p === 'heavy') this._tryHeavy();
-          else if (p === 'gale') this._tryGale();
-          else if (p === 'jam') this._tryJam(opp);
+          else if (p === 's1') this._trySkill(0, opp);
+          else if (p === 's2') this._trySkill(1, opp);
           else if (p === 'jump') this._tryJump();
           else if (p === 'block') { /* 保持 idle，下帧由 intent.block 接手 */ }
         }
@@ -269,15 +276,12 @@ export class Fighter {
     const res = opp.takeHit({
       dmg, guard: d.guard, kb: d.kb || (d.heavy ? 320 : 130),
       knockdown: !!d.knockdown, attacker: this, kind: d.heavy ? 'heavy' : 'light',
-      unblockable: galeOn, source: this,
+      unblockable: false, source: this,     // 疾风不再穿格挡（格挡是核心防御，必须有反击空间）
     });
     if (!res.applied) return false;
 
-    // 吸血 & 触发类大点
-    if (this.mods.lifesteal > 0 && res.dealt > 0) {
-      this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
-    }
-    if (crit) this.chaseT = 2;
+    this._onHit(res);                                       // 吸血 / 吸噬回血 / 影袭强化消耗
+    if (crit && this.mods.ks.has('chase')) this.chaseT = 2; // 追击大点门控：未持有者暴击不挂
     if (this.parryBuffT > 0) this.parryBuffT = 0;
 
     this.events.push({
@@ -301,6 +305,7 @@ export class Fighter {
 
     // 铁血：低血量减伤（仅持有大点者）
     if (this.mods.ks.has('iron') && this.hp < this.hpMax * 0.3) dmg *= 0.8;
+    if (this.bulwarkT > 0) dmg *= (1 - SKILLS.bulwark.reduce);   // 壁垒：技能减伤
 
     if (this.state === 'block') {
       if (this.parryT > 0 && !hit.unblockable) {
@@ -316,7 +321,7 @@ export class Fighter {
         blocked = true;
         const chip = dmg * (1 - BASE.blockReduce);
         dmg = chip;
-        this.guard -= hit.guard;
+        if (this.bulwarkT <= 0) this.guard -= hit.guard;         // 壁垒期间格挡不耗耐久
         this.guardIdleT = BASE.guardDelay;
         if (this.guard <= 0) {
           this.guard = 0;
@@ -406,14 +411,34 @@ export class Fighter {
     if (this.t >= BASE.dash.dur) this._setState('idle');
   }
 
-  _tryGale() {
+  // 技能分发：按装配槽位（Q=槽0，E=槽1）。拒绝给玩家原因；目标不满足则静默不消耗。
+  _trySkill(slot, opp, intent) {
     if (!this.canAct()) return;
+    const id = (this.mods.skills || [])[slot];
+    if (!id) return;
+    const sk = SKILLS[id];
     if (this.silenceT > 0) { this._deny('被沉默'); return; }
-    if (this.cd.gale > 0) { this._deny('冷却中'); return; }
-    if (this.energy < BASE.gale.cost) { this._deny('能量不足'); return; }
-    this.energy -= BASE.gale.cost;
-    this.cd.gale = BASE.gale.cd * this.mods.skillCdMul;
-    this.galeT = BASE.gale.dur;
+    if (this.cd['s' + (slot + 1)] > 0) { this._deny('冷却中'); return; }
+    if (this.energy < sk.cost) { this._deny('能量不足'); return; }
+    if (id === 'jam' || id === 'upper') {                  // 需要目标的技能：前置判定
+      const dist = Math.abs(opp.x - this.x);
+      const inFront = (opp.x - this.x) * this.facing > -40;
+      if (!opp.alive || dist > sk.range || !inFront) return;
+      if (id === 'jam' && opp.y > BASE.jump.dodgeH) return;  // 跳过头顶躲冲击波
+    }
+    this.energy -= sk.cost;
+    this.cd['s' + (slot + 1)] = sk.cd * this.mods.skillCdMul;
+    this.pending = null;
+    if (id === 'gale') this._doGale();
+    else if (id === 'jam') this._doJam(opp);
+    else if (id === 'upper') this._doUpper(opp);
+    else if (id === 'bulwark') this._doBulwark();
+    else if (id === 'siphon') this._doSiphon();
+    else if (id === 'shadow') this._doShadow(intent);
+  }
+
+  _doGale() {
+    this.galeT = SKILLS.gale.dur;
     if (this.mods.ks.has('galeecho')) this.galeEcho = true;
     this.events.push({ type: 'gale', owner: this });
   }
@@ -421,7 +446,7 @@ export class Fighter {
   // 疾风余威大点：疾风结束时爆发地面冲击波（可跳跃越过）
   _echo(opp) {
     this.galeEcho = false;
-    const e = BASE.gale.echo;
+    const e = SKILLS.gale.echo;
     let connected = false, dealt = 0;
     if (opp.alive && Math.abs(opp.x - this.x) <= e.range && opp.y <= BASE.jump.dodgeH) {
       const res = opp.takeHit({
@@ -462,30 +487,67 @@ export class Fighter {
     this.events.push({ type: 'deny', x: this.x, msg });
   }
 
-  _tryJam(opp) {
-    if (!this.canAct()) return;
-    if (this.silenceT > 0) { this._deny('被沉默'); return; }
-    if (this.cd.jam > 0) { this._deny('冷却中'); return; }
-    if (this.energy < BASE.jam.cost) { this._deny('能量不足'); return; }
-    this.energy -= BASE.jam.cost;
-    this.cd.jam = BASE.jam.cd * this.mods.skillCdMul;
-    const dist = Math.abs(opp.x - this.x);
-    const inFront = (opp.x - this.x) * this.facing > -40;
+  _doJam(opp) {
+    const sk = SKILLS.jam;
     let connected = false;
-    if (dist <= BASE.jam.range && inFront && opp.y <= BASE.jump.dodgeH) {   // 跳跃可跨过冲击波
-      const res = opp.takeHit({
-        dmg: this.effDmg(BASE.jam.dmg, { exec: true }),
-        guard: BASE.jam.guard, kb: BASE.jam.kb, knockdown: false,
-        attacker: this, kind: 'jam', unblockable: false, source: this,
-      });
-      if (res.applied) {
-        connected = true;
-        opp.silenceT = BASE.jam.silence;
-        if (this.mods.ks.has('jamoverload')) this.overloadT = 3;
-        if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
-      }
+    const res = opp.takeHit({
+      dmg: this.effDmg(sk.dmg, { exec: true }),
+      guard: sk.guard, kb: sk.kb, knockdown: false,
+      attacker: this, kind: 'jam', unblockable: false, source: this,
+    });
+    if (res.applied) {
+      connected = true;
+      opp.silenceT = sk.silence;
+      if (this.mods.ks.has('jamoverload')) this.overloadT = 3;
+      this._onHit(res);
     }
     this.events.push({ type: 'jam', owner: this, connected, x: this.x + this.facing * 60 });
+  }
+
+  // 破空：上挑击倒；命中滞空目标翻倍（制裁跳跃的专属武器）
+  _doUpper(opp) {
+    const sk = SKILLS.upper;
+    const airborne = opp.y > 0;
+    let connected = false, dealt = 0;
+    const res = opp.takeHit({
+      dmg: this.effDmg(sk.dmg * (airborne ? 2 : 1), { exec: true }),
+      guard: 0, kb: sk.kb, knockdown: true,
+      attacker: this, kind: 'heavy', unblockable: false, source: this,
+    });
+    if (res.applied) {
+      connected = true; dealt = res.dealt;
+      this._onHit(res);
+    }
+    this.events.push({ type: 'upper', owner: this, connected, dmg: dealt, airborne, x: this.x });
+  }
+
+  _doBulwark() {
+    this.bulwarkT = SKILLS.bulwark.dur;
+    this.events.push({ type: 'bulwark', owner: this, x: this.x });
+  }
+
+  _doSiphon() {
+    this.siphonT = SKILLS.siphon.dur;
+    this.events.push({ type: 'siphon', owner: this, x: this.x });
+  }
+
+  _doShadow(intent) {
+    const sk = SKILLS.shadow;
+    const dir = (intent && intent.axis) ? Math.sign(intent.axis) : this.facing;
+    this.x += dir * sk.dist;
+    this.iframeT = Math.max(this.iframeT, sk.iframe);
+    this.shadowBuff = true;
+    this.events.push({ type: 'shadow', owner: this, x: this.x, dir });
+  }
+
+  // 攻击落地后的攻方结算：吸血 / 吸噬回血 / 影袭强化消耗
+  _onHit(res) {
+    if (!res.applied || res.dealt <= 0) return;
+    let heal = 0;
+    if (this.mods.lifesteal > 0) heal += res.dealt * this.mods.lifesteal;
+    if (this.siphonT > 0) heal += res.dealt * SKILLS.siphon.heal;
+    if (heal > 0) this.hp = Math.min(this.hpMax, this.hp + heal);
+    if (this.shadowBuff) this.shadowBuff = false;
   }
 
   _setState(s) {
@@ -497,13 +559,15 @@ export class Fighter {
 
   // HUD 快照
   snapshot() {
+    const ids = this.mods.skills || ['gale', 'jam'];
     return {
       hp: this.hp, hpMax: this.hpMax,
       energy: this.energy, energyMax: this.energyMax,
       guard: this.guard, guardMax: this.guardMax,
-      gale: this.cd.gale, jam: this.cd.jam, dash: this.cd.dash,
-      galeMax: BASE.gale.cd * this.mods.skillCdMul,
-      jamMax: BASE.jam.cd * this.mods.skillCdMul,
+      s1: this.cd.s1, s2: this.cd.s2, dash: this.cd.dash,
+      skills: ids.slice(),
+      s1Max: SKILLS[ids[0]].cd * this.mods.skillCdMul,
+      s2Max: SKILLS[ids[1]].cd * this.mods.skillCdMul,
       galeActive: this.galeT > 0, silence: this.silenceT > 0,
       silenceT: this.silenceT, alive: this.alive,
       state: this.state,

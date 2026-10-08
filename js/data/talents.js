@@ -84,6 +84,7 @@ export function derive(build) {
     energyRegenMul: 1 + 0.12 * s.energyRegen,
     skillCdMul: Math.max(0.3, 1 - 0.08 * s.skillcd),
     ks: new Set(build.ks),
+    skills: ['gale', 'jam'],               // 技能装配默认值；battle.start 按玩家装配/AI 预设覆盖
   };
 }
 

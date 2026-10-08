@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#07090f">
+<meta name="theme-color" content="#0a0b0f">
 <meta name="description" content="Laya Clash 火柴竞技场 — 实时动作对战，天赋自由装配，离线可玩">
 <title>Laya Clash · 火柴竞技场</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@600;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/panels.css">
 <link rel="stylesheet" href="css/battle.css">
@@ -48,11 +48,11 @@
 
     <div class="hud-bottom">
       <div id="skill-rack" class="skill-rack">
-        <div class="skill" id="sk-gale" data-act="gale">
+        <div class="skill" id="sk-1" data-act="s1">
           <div class="skill-cd"></div><div class="skill-key">Q</div>
           <div class="skill-name">疾风</div><div class="skill-cost">40</div>
         </div>
-        <div class="skill" id="sk-jam" data-act="jam">
+        <div class="skill" id="sk-2" data-act="s2">
           <div class="skill-cd"></div><div class="skill-key">E</div>
           <div class="skill-name">干扰</div><div class="skill-cost">35</div>
         </div>
@@ -74,8 +74,8 @@
       <button class="tbtn tbtn-dash" data-act="dash" aria-label="冲刺">冲</button>
       <button class="tbtn tbtn-block" data-act="block" aria-label="格挡">防</button>
       <button class="tbtn tbtn-jump" data-act="jump" aria-label="跳跃">跳</button>
-      <button class="tbtn tbtn-skill" data-act="gale" aria-label="疾风">疾风</button>
-      <button class="tbtn tbtn-skill" data-act="jam" aria-label="干扰">干扰</button>
+      <button class="tbtn tbtn-skill" data-act="s1" aria-label="技能1">技能1</button>
+      <button class="tbtn tbtn-skill" data-act="s2" aria-label="技能2">技能2</button>
     </div>
   </div>
 
@@ -142,6 +142,11 @@
         <div class="side-card keystone-card">
           <h3>关键大点 <em id="keystone-count">0/2</em></h3>
           <div id="keystone-list"><!-- JS --></div>
+        </div>
+        <div class="side-card skill-card">
+          <h3>技能装配 <em>6 选 2 · 槽位即键位</em></h3>
+          <div id="skill-slots" class="skill-slots"><!-- JS --></div>
+          <div id="skill-pool" class="skill-pool"><!-- JS --></div>
         </div>
       </aside>
     </div>

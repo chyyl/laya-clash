@@ -2,9 +2,12 @@ import {
   BRANCHES, KEYSTONES, PRESETS, POOL, KS_MAX,
   emptyBuild, usedPoints, derive, presetBuild,
 } from '../data/talents.js';
+import { SKILLS, SKILL_IDS, SKILL_KEYS, normalizeLoadout } from '../data/skills.js';
 import { load, save } from '../core/storage.js';
 
 let draft = null;
+let loadout = null;                    // 技能装配：[槽0(Q), 槽1(E)]
+let activeSlot = 0;                    // 装配面板当前选中的槽
 let onSaved = null;
 const $ = (id) => document.getElementById(id);
 
@@ -13,9 +16,15 @@ export function currentBuild() {
   return draft;
 }
 
+export function currentLoadout() {
+  if (!loadout) loadout = normalizeLoadout(load('loadout', null));
+  return loadout;
+}
+
 export function initTalent({ saved }) {
   onSaved = saved;
   draft = load('talent', null) || presetBuild('balanced');
+  loadout = normalizeLoadout(load('loadout', null));
   $('talent-save').addEventListener('click', () => {
     save('talent', draft);
     if (onSaved) onSaved(draft);
@@ -106,6 +115,36 @@ function render() {
     btn.textContent = p.name;
     btn.addEventListener('click', () => { draft = presetBuild(p.id); render(); });
     pWrap.appendChild(btn);
+  }
+
+  // 技能装配：槽位（点击选中）+ 技能池（点击装备到选中槽，自动跳下一槽）
+  const slotWrap = $('skill-slots');
+  slotWrap.innerHTML = '';
+  loadout.forEach((id, i) => {
+    const sk = SKILLS[id];
+    const btn = document.createElement('button');
+    btn.className = 'skill-slot' + (activeSlot === i ? ' active' : '');
+    btn.innerHTML = `<span class="slot-key">${SKILL_KEYS[i]}</span><b>${sk.name}</b><i>${sk.cls} · ${sk.cost} 能量 / ${sk.cd}s 冷却</i>`;
+    btn.addEventListener('click', () => { activeSlot = i; render(); });
+    slotWrap.appendChild(btn);
+  });
+  const poolWrap = $('skill-pool');
+  poolWrap.innerHTML = '';
+  for (const id of SKILL_IDS) {
+    const sk = SKILLS[id];
+    const btn = document.createElement('button');
+    btn.className = 'skill-chip' + (loadout.includes(id) ? ' on' : '');
+    btn.innerHTML = `<b>${sk.name}</b><span>${sk.desc}</span>`;
+    btn.addEventListener('click', () => {
+      const at = loadout.indexOf(id);
+      if (at >= 0) { activeSlot = at; render(); return; }   // 已装备 → 选中对应槽
+      loadout[activeSlot] = id;
+      loadout = normalizeLoadout(loadout);                  // 去重，保证始终两项
+      save('loadout', loadout);
+      activeSlot = activeSlot === 0 ? 1 : 0;
+      render();
+    });
+    poolWrap.appendChild(btn);
   }
 
   // 最终属性

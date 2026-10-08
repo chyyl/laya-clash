@@ -1,4 +1,5 @@
 import { BASE } from './constants.js';
+import { pickSlot } from '../data/skills.js';
 
 // 分层 AI：计划（approach/attack/defend/retreat）+ 反应延迟（看到起手后才决策）
 // 难度参数见 data/aiBuilds.js。AI 与玩家共用 Fighter API，作弊仅限“读帧”（已知起手阶段）。
@@ -146,12 +147,10 @@ export class AIBrain {
     // 失误：该动手时发呆
     if (r < p.mistake) { this.plan = { type: 'wait', t: 0.3 + Math.random() * 0.4 }; return; }
 
-    // 技能决策（独立掷骰：早前与失误共用 r，rookie 两值相等导致永不施法）
+    // 技能决策（独立掷骰；按装配选槽，残血优先防御类）
     if (me.silenceT <= 0 && Math.random() < p.skill) {
-      const galeReady = me.cd.gale <= 0 && me.energy >= 40;
-      const jamReady = me.cd.jam <= 0 && me.energy >= 35;
-      if (galeReady && dist < 260) { this.plan = { type: 'cast', t: 0.1, skill: 'gale' }; return; }
-      if (jamReady && dist > 130 && dist < 250) { this.plan = { type: 'cast', t: 0.1, skill: 'jam' }; return; }
+      const slot = pickSlot(me, dist);
+      if (slot >= 0) { this.plan = { type: 'cast', t: 0.1, skill: 's' + (slot + 1) }; return; }
     }
 
     // 敌方处于可惩罚状态

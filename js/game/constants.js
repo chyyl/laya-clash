@@ -14,14 +14,14 @@ export const BASE = {
 
   // 三段轻击连招
   light: [
-    { windup: 0.08, active: 0.06, rec: 0.14, dmg: 6, reach: 76,  lunge: 120, guard: 14 },
-    { windup: 0.08, active: 0.06, rec: 0.14, dmg: 6, reach: 78,  lunge: 120, guard: 14 },
-    { windup: 0.10, active: 0.08, rec: 0.30, dmg: 10, reach: 86, lunge: 150, guard: 18, kb: 260 },
+    { windup: 0.08, active: 0.06, rec: 0.14, dmg: 5, reach: 76,  lunge: 120, guard: 14 },
+    { windup: 0.08, active: 0.06, rec: 0.14, dmg: 5, reach: 78,  lunge: 120, guard: 14 },
+    { windup: 0.10, active: 0.08, rec: 0.30, dmg: 9, reach: 86, lunge: 150, guard: 18, kb: 260 },
   ],
   comboWindow: 0.55,        // 连招衔接窗口（收招后）
   comboReset: 1.2,          // HUD 连击数重置
 
-  heavy: { windup: 0.30, active: 0.10, rec: 0.42, dmg: 16, reach: 98, lunge: 90, guard: 55, knockdown: true },
+  heavy: { windup: 0.30, active: 0.10, rec: 0.42, dmg: 14, reach: 98, lunge: 90, guard: 55, knockdown: true },
 
   blockReduce: 0.78,        // 格挡减伤
   parryWindow: 0.15,        // 按下格挡后的完美格挡窗口
@@ -39,8 +39,7 @@ export const BASE = {
   stagger: 1.05,            // 破防硬直
   parriedStagger: 0.80,     // 被弹反硬直
 
-  gale: { cost: 40, cd: 6, dur: 3.0, dmgMul: 1.25, echo: { dmg: 10, range: 300, kb: 260, guard: 40 } },   // 疾风：攻击无视格挡+增伤；echo=疾风余威大点
-  jam:  { cost: 35, cd: 8, range: 250, dmg: 9, kb: 430, guard: 45, silence: 1.5 }, // 干扰：击退+技能封锁
+  // （技能参数已迁至 data/skills.js 的 SKILLS 池——装配体系）
   quake: { dmg: 6, range: 150, kb: 200 },   // 落地震大点：落地震地一击
 
   crit: { mult: 1.6, baseChance: 0.05 },

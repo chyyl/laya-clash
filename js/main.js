@@ -5,9 +5,10 @@ import { load, save, DEFAULT_SETTINGS, DEFAULT_RECORDS } from './core/storage.js
 import { Battle } from './game/battle.js';
 import { DIFFICULTIES, rotateBuild } from './data/aiBuilds.js';
 import { PRESETS } from './data/talents.js';
+import { SKILLS, normalizeLoadout } from './data/skills.js';
 import { showScreen, currentScreen, initNavigation } from './ui/screens.js';
 import { HUD } from './ui/hud.js';
-import { initTalent, currentBuild } from './ui/talentUi.js';
+import { initTalent, currentBuild, currentLoadout } from './ui/talentUi.js';
 import { initSettings, initTutorial, openTutorial, renderRecords } from './ui/panels.js';
 
 const $ = (id) => document.getElementById(id);
@@ -73,6 +74,7 @@ function startMatch(config) {
   const diff = DIFFICULTIES[config.diff];
   const ai = rotateBuild(config.diff, records.matches + records.wins + records.losses);
   const pb = currentBuild();
+  const lo = normalizeLoadout(currentLoadout());
 
   $('vs-pbuild').textContent = buildLabel(pb);
   $('vs-aname').textContent = diff.name;
@@ -82,7 +84,7 @@ function startMatch(config) {
   setTimeout(() => {
     $('vs-layer').classList.add('hidden');
     battle.reset({
-      playerBuild: pb, aiName: diff.name, aiBuild: ai,
+      playerBuild: pb, playerSkills: lo, aiName: diff.name, aiBuild: ai,
       diffParams: diff, diff: config.diff,
     });
     battle.fxQuality = settings.particles;
@@ -96,6 +98,7 @@ function startMatch(config) {
     showScreen('none');
     syncTouchVisibility();
     Input.reset();
+    Input.setSkillLabels(lo.map(id => SKILLS[id].name));
     Input.setEnabled(false);          // intro 结束后由循环打开
   }, 1500);
 }
