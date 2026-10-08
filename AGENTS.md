@@ -38,6 +38,7 @@ for f in js/main.js js/core/*.js js/data/*.js js/game/*.js js/ui/*.js; do node -
 
 - **装配根 = `js/main.js`**：启动、屏幕路由、全局热键、rAF 主循环（`core/loop.js` 造，dt 钳 33ms）、`window.__lc` 钩子。
 - 分层：`js/data` 纯参数与推导（**改技能/天赋数值只动 skills.js / talents.js**，公式与默认装配都在这）；`js/game` 模拟（fighter 单实体、battle 编排+事件、ai 决策、render·arena·fx 画布）；`js/core` 平台（input 意图、storage、audio 合成）；`js/ui` DOM 渲染。
+- **背景 = `js/game/arena.js` 水墨武侠夜景，静态/动态两层离屏缓存**：天空、远近山、山门、青松、地面、竹篱、木人桩首帧惰性画进 BACK/FRONT 缓存（`document.fonts.ready` 后自动重建）；雾带、灯笼、火盆、人潮火把、卷轴秘籍图谱每帧现画。改背景先分清动哪层；`drawArena(ctx, t, heat)` 签名与 heat（0-1 人潮热度）语义不可改；**背景只用墨色与暖灯，青/红留给选手剪影**（可读性来源），别把霓虹色加回来。
 - **输入是意图制**：keydown 入边沿队列 + 按住集合，主循环经 `pIntent` 回调每帧消费；`enabled` 门控战斗外为 false。
 - **联机 = host 权威 P2P（`js/core/net.js` + main.js 接线）**：两层结构——编解码纯函数（encDesc/serFighter/serEv/packState/unpackState/swapSnap/IntentBuf，net_test 可测）+ `Peer` 传输（RTCPeerConnection 惰性构造，Node 导入安全）。房主跑完整模拟每帧 `packState` 外发；访客不模拟，状态入队 `battle.netApply`，`netTick` **先演事件后覆状态**（里程碑连击口径与房主一致，落后 >6 帧只留最近几帧）。消息：`hi`(访客装配)/`start`/`s`/`i`/`end`/`p`(暂停双向)/`q`/`rematch`；`battle.net` 标志在 reset({net:true}) 置位，双连击 `combo/fCombo`、双伤害 `dmgDealt/fDmgDealt` 分账，HUD 视角翻转走 `swapSnap`。**改事件结算要同步 pack/deser 的引用键表（REF_KEYS）**。
 - **2v2 改造切入点 = battle.js**（README 路线图）：Battle 硬编码 player/foe 两实体（reset 里构造），渲染与 HUD 同样假设 2 实体——2v2 第一步是多实体化（fighters 数组 + 分队 + 目标选择），**目前没有 mode 标志**（联机走 `battle.net` 布尔，别混淆）。
