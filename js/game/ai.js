@@ -10,20 +10,29 @@ export class AIBrain {
     this.p = params;
     this.plan = { type: 'wait', t: 0.3 };
     this.reactT = 0;
-    this.reacted = false;      // 对当前这一次起手是否已反应
+    this.reacted = false;      // 对当前这一起手是否已反应
     this.blockHold = false;
     this.jitter = (Math.random() - 0.5) * 0.1;
+    this._lastFoe = foe;       // 记录上一帧目标，用于检测目标切换
   }
 
   reset() {
     this.plan = { type: 'wait', t: 0.3 };
     this.reactT = 0; this.reacted = false; this.blockHold = false;
+    this._lastFoe = this.foe;
   }
 
   update(dt) {
     const me = this.me, foe = this.foe, p = this.p;
     const intent = { axis: 0, actions: [], block: false };
     if (!me.alive || !foe.alive) return intent;
+
+    // 目标切换：重置反应状态，避免沿用旧目标的 reacted 导致不再防御
+    if (foe !== this._lastFoe) {
+      this.reacted = false;
+      this.reactT = 0;
+      this._lastFoe = foe;
+    }
 
     const dist = Math.abs(foe.x - me.x);
     const dirToFoe = foe.x > me.x ? 1 : -1;
