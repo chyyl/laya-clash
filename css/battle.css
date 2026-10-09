@@ -28,6 +28,11 @@ body.touch-mode .hud-bottom{justify-content:center}
 .hp-fill{position:absolute;inset:0;width:100%;transform-origin:left;
   background:linear-gradient(180deg,#8ef6ff,var(--acc) 45%,#10b5cc);transition:width .12s linear}
 .hp-block.foe .hp-fill{background:linear-gradient(180deg,#ff8fa3,var(--foe) 45%,#c41235)}
+/* 2v2 成员条：同色相淡色区分席位（淡青队友 / 淡红次席，与 battle.js MATE_COLOR/FOE2_COLOR 一致） */
+.hp-block.ally .tag-dot{background:#7be9f8;box-shadow:0 0 9px #7be9f8}
+.hp-block.ally .hp-fill{background:linear-gradient(180deg,#cdf6fc,#7be9f8 45%,#2aa8c4)}
+.hp-block.foe2 .tag-dot{background:#ff8093;box-shadow:0 0 9px #ff8093}
+.hp-block.foe2 .hp-fill{background:linear-gradient(180deg,#ffc2cb,#ff8093 45%,#c4506a)}
 .sub-bars{display:flex;gap:8px;margin-top:5px}
 .mini-bar{flex:1;height:7px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.14);overflow:hidden}
 .mini-bar i{display:block;height:100%;width:100%;transform-origin:left;transition:width .1s linear}

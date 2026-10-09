@@ -10,9 +10,9 @@ python -m http.server 8091
 
 # 回归四件（tests/harness.mjs 自写断言，非 pytest；无单测过滤，只能整文件跑；失败退出码非 0）
 node tests/input_test.mjs      # 14 项：输入层（键盘格挡按住、repeat 防叠、焦点防抢）
-node tests/keystone_test.mjs   # 52 项：天赋系数、大点门控、跳跃耗能、AI 行为
+node tests/keystone_test.mjs   # 59 项：天赋系数、大点门控、跳跃耗能、AI 行为、2v2 阵容
 node tests/skill_test.mjs      # 49 项：技能池、装配归一、槽位拒绝、AI 选槽
-node tests/net_test.mjs        # 34 项：房间码往返、状态打包解包、视角翻转、意图缓冲   合计 149
+node tests/net_test.mjs        # 34 项：房间码往返、状态打包解包、视角翻转、意图缓冲   合计 156
 node tests/input_test.mjs && node tests/keystone_test.mjs && node tests/skill_test.mjs && node tests/net_test.mjs   # 一键全跑 = 回归门
 
 # 语法门（Node 24 对 ESM .js 可直接 --check；单次只查一个文件，必须循环）
@@ -41,7 +41,7 @@ for f in js/main.js js/core/*.js js/data/*.js js/game/*.js js/ui/*.js; do node -
 - **背景 = `js/game/arena.js` 水墨武侠夜景，静态/动态两层离屏缓存**：天空、远近山、山门、青松、地面、竹篱、木人桩首帧惰性画进 BACK/FRONT 缓存（`document.fonts.ready` 后自动重建）；雾带、灯笼、火盆、人潮火把、卷轴秘籍图谱每帧现画。改背景先分清动哪层；`drawArena(ctx, t, heat)` 签名与 heat（0-1 人潮热度）语义不可改；**背景只用墨色与暖灯，青/红留给选手剪影**（可读性来源），别把霓虹色加回来。
 - **输入是意图制**：keydown 入边沿队列 + 按住集合，主循环经 `pIntent` 回调每帧消费；`enabled` 门控战斗外为 false。
 - **联机 = host 权威 P2P（`js/core/net.js` + main.js 接线）**：两层结构——编解码纯函数（encDesc/serFighter/serEv/packState/unpackState/swapSnap/IntentBuf，net_test 可测）+ `Peer` 传输（RTCPeerConnection 惰性构造，Node 导入安全）。房主跑完整模拟每帧 `packState` 外发；访客不模拟，状态入队 `battle.netApply`，`netTick` **先演事件后覆状态**（里程碑连击口径与房主一致，落后 >6 帧只留最近几帧）。消息：`hi`(访客装配)/`start`/`s`/`i`/`end`/`p`(暂停双向)/`q`/`rematch`；`battle.net` 标志在 reset({net:true}) 置位，双连击 `combo/fCombo`、双伤害 `dmgDealt/fDmgDealt` 分账，HUD 视角翻转走 `swapSnap`。**改事件结算要同步 pack/deser 的引用键表（REF_KEYS）**。
-- **2v2 改造切入点 = battle.js**（README 路线图）：Battle 硬编码 player/foe 两实体（reset 里构造），渲染与 HUD 同样假设 2 实体——2v2 第一步是多实体化（fighters 数组 + 分队 + 目标选择），**目前没有 mode 标志**（联机走 `battle.net` 布尔，别混淆）。
+- **2v2 已落地（本地 PVE）**：`battle.reset({team})` 带 team 即 2v2——`this.fighters` 四实体 + `teamA/teamB` 分队 + `_enemiesOf` 就近选靶；阵容在 `aiBuilds.teamLineup(diff, rot)` 逐槽抽预设（三 AI 互不重复），入口是难度页 `#mode-seg` 切换（main.js `matchMode`，存 `layaclash.mode`）；KO 走团灭判定（`teamA/teamB.every(!alive)` 才终局），2v2 战绩记 `records.perMode['2v2']` 不混 perDiff。**mode 标志 = `battle.mode`（'1v1'/'2v2'），联机走 `battle.net` 布尔，两者别混淆**；联机恒为 1v1（netStart* 不传 team），1v1 的快照/事件结构与联机契约逐字节保持原样（snapshot 仅 2v2 追加 mate/foe2 键）。
 - 持久化统一走 `js/core/storage.js`，命名空间 `layaclash.`——**改键名等于丢玩家数据**。
 
 ## HTML/CSS 与 JS 的契约（改名前先查这里）
@@ -50,7 +50,7 @@ for f in js/main.js js/core/*.js js/data/*.js js/game/*.js js/ui/*.js; do node -
 - JS 写入的 CSS 变量：`--p`（冷却环 conic）、`--fill`（滑杆进度）、`--bc`（天赋分支色来自 talents.js 的 data.color）。
 - `Input.setSkillLabels` 直接写 `textContent` → `.tbtn-skill` 按钮必须保持纯文本子节点（不能塞内层 span）。
 - index.html 契约：id 被 JS 按名取用（`$('sk-1')`、`getElementById('game')` 等），**改 id 必同步 js**；新增屏幕除加 section 外还须在 `screens.js` 顶部 `SCREENS` 数组登记 id，否则 `showScreen` 永远不显示它，`[data-go]` 按钮则由 initNavigation 自动接线。
-- CSS 令牌与 Canvas 配色是**两套**：画布 hex 硬编码在 JS——选手色 battle.js:34-35（`#3df2ff`/`#ff3c5f`，必须与 `--acc`/`--foe` 一致）、特效金散布 render·fx·battle、分支色在 talents.js `data.color`（注入 `--bc`）；**换主题强调色要 JS/CSS 两头同步**。
+- CSS 令牌与 Canvas 配色是**两套**：画布 hex 硬编码在 JS——选手色 battle.js:34-35（`#3df2ff`/`#ff3c5f`，必须与 `--acc`/`--foe` 一致；2v2 成员色 MATE_COLOR `#7be9f8`/FOE2_COLOR `#ff8093`，与 battle.css 次席血条同 hex）、特效金散布 render·fx·battle、分支色在 talents.js `data.color`（注入 `--bc`）；**换主题强调色要 JS/CSS 两头同步**。
 - 设计系统（css/base.css 头注）：中性石墨底 + **单强调青 `--acc`**；语义色各表一意——红=对手/危险、金=成就/传奇、紫=干扰、钢=中性资源。别加新色相或彩虹按钮；触控钮统一中性、仅攻击组带青边。
 - 战斗结算若改：events/actions 类双轨在 layaok 侧的约定不适用这里，本作 UI 只消费 `snapshot` 与 DOM 类名。
 

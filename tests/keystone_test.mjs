@@ -7,6 +7,7 @@ const { derive, emptyBuild, presetBuild, usedPoints } = await import(ROOT + 'dat
 const { Fighter } = await import(ROOT + 'game/fighter.js');
 const { BASE } = await import(ROOT + 'game/constants.js');
 const { AIBrain } = await import(ROOT + 'game/ai.js');
+const { teamLineup, DIFFICULTIES } = await import(ROOT + 'data/aiBuilds.js');
 
 // ---- 构造 ----
 function build(stats = {}, ks = []) {
@@ -237,6 +238,50 @@ const ROOKIE = { reaction: 0.45, block: 0.25, parry: 0, aggro: 0.4, skill: 0.3, 
   let intent;
   try { intent = brain.update(1 / 60); } finally { Math.random = orig; }
   ok('AI 对跳过头顶的收手', intent.actions.length === 0, JSON.stringify(intent.actions));
+}
+
+// ---- 2v2 阵容：三 AI 逐槽抽预设、互不重复 ----
+for (const id of ['rookie', 'adept', 'master']) {
+  const pool = DIFFICULTIES[id].builds;
+  let distinct = true, inPool = true, shaped = true;
+  for (let rot = 0; rot < pool.length * 2; rot++) {
+    const l = teamLineup(id, rot);
+    const ids = [l.mate.id, l.foes[0].id, l.foes[1].id];
+    if (new Set(ids).size !== 3) distinct = false;
+    if (!ids.every(x => pool.includes(x))) inPool = false;
+    if (!l.mate.name || !l.foes[0].skills || !l.foes[1].build) shaped = false;
+  }
+  ok('teamLineup ' + id + ' 三槽互不重复且在池内', distinct && inPool && shaped,
+    JSON.stringify(teamLineup(id, 1)));
+}
+{
+  const l = teamLineup('adept', -1);
+  ok('teamLineup 负轮换取模不越界', DIFFICULTIES.adept.builds.includes(l.mate.id));
+}
+
+// ---- 2v2 实体语义：阵营字段 / 列表取焦点 / AoE 双目标 ----
+{
+  const p = mk();
+  const e = new Fighter({ name: 'e', color: '#fff', mods: derive(emptyBuild()), isPlayer: false });
+  ok('Fighter team 默认：己方 1 / 敌方 2', p.team === 1 && e.team === 2);
+}
+{
+  const f = mk();
+  const dead = opp(); dead.dead = true; dead.x = -300;
+  const alive = opp(); alive.x = 50; alive.state = 'stagger';
+  f.x = 0;
+  f.update(1 / 60, [dead, alive], INT);
+  ok('update 列表跳过死敌、取活敌为焦点', f.facing === 1 && f.targetVulnerable === true,
+    'facing ' + f.facing + ' vul ' + f.targetVulnerable);
+}
+{
+  const f = mk({}, ['quake']);
+  const a = opp(), b = opp();
+  f.x = 0; a.x = 40; b.x = -50;
+  const hp0a = a.hp, hp0b = b.hp;
+  f._quake([a, b]);
+  ok('quake 吃列表双目标', a.hp === hp0a - BASE.quake.dmg && b.hp === hp0b - BASE.quake.dmg,
+    'dmg ' + (hp0a - a.hp) + '/' + (hp0b - b.hp));
 }
 
 done();

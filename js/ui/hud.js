@@ -14,6 +14,8 @@ export const HUD = {
       ehp: $('ehp-fill'), ehpFlash: $('ehp-flash'),
       pen: $('pen-fill'), een: $('een-fill'),
       pgd: $('pgd-fill'), egd: $('egd-fill'),
+      mateBlock: $('mate-block'), mhp: $('mhp-fill'), mname: $('hud-mname'),
+      foe2Block: $('foe2-block'), f2hp: $('f2hp-fill'), f2name: $('hud-f2name'),
       pbuild: $('hud-pbuild'), aname: $('hud-aname'), abuild: $('hud-abuild'),
       streak: $('hud-streak'),
       combo: $('combo'), comboX: $('combo-x'),
@@ -26,10 +28,15 @@ export const HUD = {
 
   show(v) { el.hud.classList.toggle('hidden', !v); if (!v) this._announce(null); },
 
-  setMatch({ pBuild, aName, aBuild }) {
+  // 2v2 传 mateName/f2Name 显示队友与第二对手血条；1v1 传空隐藏
+  setMatch({ pBuild, aName, aBuild, mateName = null, f2Name = null }) {
     el.pbuild.textContent = pBuild;
     el.aname.textContent = aName;
     el.abuild.textContent = aBuild;
+    el.mateBlock.classList.toggle('hidden', !mateName);
+    el.foe2Block.classList.toggle('hidden', !f2Name);
+    if (mateName) el.mname.textContent = mateName;
+    if (f2Name) el.f2name.textContent = f2Name;
   },
 
   setStreak(n) {
@@ -64,6 +71,8 @@ export const HUD = {
     this._bar(el.een, snap.f.energy, snap.f.energyMax);
     this._bar(el.pgd, snap.p.guard, snap.p.guardMax);
     this._bar(el.egd, snap.f.guard, snap.f.guardMax);
+    if (snap.mate) this._bar(el.mhp, snap.mate.hp, snap.mate.hpMax);
+    if (snap.foe2) this._bar(el.f2hp, snap.foe2.hp, snap.foe2.hpMax);
 
     // 技能架（槽位制：名字/能耗随装配，冷却环按槽位）
     const ids = snap.p.skills || ['gale', 'jam'];

@@ -4,7 +4,7 @@ import { AudioFX } from './core/audio.js';
 import { load, save, DEFAULT_SETTINGS, DEFAULT_RECORDS } from './core/storage.js';
 import { Peer, IntentBuf, packState, unpackState, swapSnap } from './core/net.js';
 import { Battle } from './game/battle.js';
-import { DIFFICULTIES, rotateBuild } from './data/aiBuilds.js';
+import { DIFFICULTIES, rotateBuild, teamLineup } from './data/aiBuilds.js';
 import { PRESETS } from './data/talents.js';
 import { SKILLS, normalizeLoadout } from './data/skills.js';
 import { showScreen, currentScreen, initNavigation } from './ui/screens.js';
@@ -22,6 +22,7 @@ let battleActive = false;
 let paused = false;
 let lastConfig = null;
 let touchShown = false;
+let matchMode = load('mode', '1v1') === '2v2' ? '2v2' : '1v1';   // 对战模式选择（持久化）
 
 // ---------------- 联机状态 ----------------
 const peer = new Peer();
@@ -80,26 +81,34 @@ function buildLabel(build) {
 function startMatch(config) {
   lastConfig = config;
   const diff = DIFFICULTIES[config.diff];
-  const ai = rotateBuild(config.diff, records.matches + records.wins + records.losses);
+  const rot = records.matches + records.wins + records.losses;
+  const team = config.mode === '2v2' ? teamLineup(config.diff, rot) : null;   // 2v2：三 AI 逐槽抽流派
+  const ai = team ? null : rotateBuild(config.diff, rot);
   const pb = currentBuild();
   const lo = normalizeLoadout(currentLoadout());
+  const foeLabel = team ? `${team.foes[0].name} · ${team.foes[1].name}` : ai.name;
 
   $('vs-pname').textContent = '挑战者';
-  $('vs-pbuild').textContent = buildLabel(pb);
+  $('vs-pbuild').textContent = team ? `${buildLabel(pb)} + 队友 ${team.mate.name}` : buildLabel(pb);
   $('vs-aname').textContent = diff.name;
-  $('vs-abuild').textContent = ai.name;
+  $('vs-abuild').textContent = foeLabel;
   $('vs-layer').classList.remove('hidden');
 
   setTimeout(() => {
     $('vs-layer').classList.add('hidden');
     battle.reset({
-      playerBuild: pb, playerSkills: lo, aiName: diff.name, aiBuild: ai,
-      diffParams: diff, diff: config.diff,
+      playerBuild: pb, playerSkills: lo, aiName: diff.name,
+      aiBuild: team ? { name: foeLabel.replace(/ · /g, '·') } : ai,
+      diffParams: diff, diff: config.diff, team,
     });
     battle.fxQuality = settings.particles;
     battle.fx.quality = settings.particles;
     battle.fx.noShake = settings.shake === 'off';
-    HUD.setMatch({ pBuild: buildLabel(pb), aName: diff.name, aBuild: ai.name });
+    HUD.setMatch({
+      pBuild: buildLabel(pb), aName: diff.name, aBuild: foeLabel,
+      mateName: team ? team.mate.name : null,
+      f2Name: team ? team.foes[1].name : null,
+    });
     HUD.setStreak(records.streak);
     HUD.show(true);
     battleActive = true;
@@ -138,8 +147,15 @@ function finishMatch(res) {
   if (res.win) { records.wins++; records.streak++; records.bestStreak = Math.max(records.bestStreak, records.streak); }
   else { records.losses++; records.streak = 0; }
   records.bestCombo = Math.max(records.bestCombo, res.peakCombo);
-  const pd = records.perDiff[res.diff] || (records.perDiff[res.diff] = { w: 0, l: 0 });
-  res.win ? pd.w++ : pd.l++;
+  if (res.mode === '2v2') {
+    // 2v2 单独分账（perMode），不与 1v1 的难度行混算
+    if (!records.perMode) records.perMode = {};
+    const pm = records.perMode['2v2'] || (records.perMode['2v2'] = { w: 0, l: 0 });
+    res.win ? pm.w++ : pm.l++;
+  } else {
+    const pd = records.perDiff[res.diff] || (records.perDiff[res.diff] = { w: 0, l: 0 });
+    res.win ? pd.w++ : pd.l++;
+  }
   save('records', records);
 
   // 结算面板
@@ -479,13 +495,29 @@ initNavigation((dest) => {
   navigate(dest);
 });
 
-// 难度卡 → 开打
+// 难度卡 → 开打（模式跟随难度页顶部的 1v1/2v2 切换）
 document.querySelectorAll('.diff-card').forEach(card => {
   card.addEventListener('click', () => {
     AudioFX.play('click');
-    startMatch({ diff: card.dataset.diff });
+    startMatch({ diff: card.dataset.diff, mode: matchMode });
   });
 });
+
+// 模式切换（单挑 1v1 / 组队 2v2）
+const modeSeg = $('mode-seg');
+function paintMode() {
+  modeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === matchMode));
+  $('diff-note').textContent = matchMode === '2v2'
+    ? '你 + AI 队友 · 三名对手按流派逐槽抽取、互不重复'
+    : '对手会轮换不同流派的天赋装配';
+}
+modeSeg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  AudioFX.play('click');
+  matchMode = b.dataset.mode === '2v2' ? '2v2' : '1v1';
+  save('mode', matchMode);
+  paintMode();
+}));
+paintMode();
 
 // 结算按钮
 $('res-rematch').addEventListener('click', () => {

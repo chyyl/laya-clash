@@ -4,11 +4,12 @@ import { SKILLS } from '../data/skills.js';
 // 战斗实体：状态机 + 资源（生命/能量/格挡）+ buff 计时
 // 所有对外反馈走 events 队列，由 battle 统一消费（音效/演出/HUD），保持实体无 IO。
 export class Fighter {
-  constructor({ name, color, mods, isPlayer }) {
+  constructor({ name, color, mods, isPlayer, team = isPlayer ? 1 : 2 }) {
     this.name = name;
     this.color = color;
     this.mods = mods;                 // derive(build) 的结果
     this.isPlayer = isPlayer;
+    this.team = team;                 // 阵营：1=玩家方（含 AI 队友），2=敌方；2v2 团灭判定用
     this.events = [];
     this.reset(0, 1);
   }
@@ -70,9 +71,12 @@ export class Fighter {
     return d;
   }
 
+  // opp 可以是单个敌人（1v1/测试直调）或敌人列表（2v2，battle 按就近排序传入）
   update(dt, opp, intent) {
-    this.targetVulnerable = opp.vulnerable;
-    this.targetFull = opp.hp >= opp.hpMax;            // 开局压制大点
+    const foes = Array.isArray(opp) ? opp : [opp];
+    const tgt = foes.find(o => o.alive) || foes[0];
+    this.targetVulnerable = tgt.vulnerable;
+    this.targetFull = tgt.hp >= tgt.hpMax;            // 开局压制大点
 
     // --- 计时器 ---
     const m = this.mods;
@@ -86,7 +90,7 @@ export class Fighter {
     this.silenceT = Math.max(0, this.silenceT - dt);
     const galeWas = this.galeT > 0;
     this.galeT = Math.max(0, this.galeT - dt);
-    if (galeWas && this.galeT === 0 && this.galeEcho && !this.dead) this._echo(opp);   // 疾风余威：结束时爆发
+    if (galeWas && this.galeT === 0 && this.galeEcho && !this.dead) this._echo(foes);   // 疾风余威：结束时爆发
     this.chaseT = Math.max(0, this.chaseT - dt);
     this.overloadT = Math.max(0, this.overloadT - dt);
     this.bulwarkT = Math.max(0, this.bulwarkT - dt);
@@ -109,13 +113,13 @@ export class Fighter {
         this.y = 0; this.vy = 0;
         this.events.push({ type: 'land', x: this.x });
         if (this.state === 'idle') this._setState('land');   // 落地硬直（受控状态不受影响）
-        if (!this.dead && this.mods.ks.has('quake')) this._quake(opp);   // 落地震大点
+        if (!this.dead && this.mods.ks.has('quake')) this._quake(foes);   // 落地震大点
       }
     }
     if (this.dead) { this.t += dt; return; }
 
-    // 面向对手（冲刺中也保持）
-    if (opp.x !== this.x) this.facing = opp.x > this.x ? 1 : -1;
+    // 面向最近的活敌（冲刺中也保持）
+    if (tgt.x !== this.x) this.facing = tgt.x > this.x ? 1 : -1;
 
     // --- 无敌/倒地等受控状态 ---
     if (this.state === 'hitstun' || this.state === 'stagger' || this.state === 'down' || this.state === 'getup'
@@ -134,7 +138,7 @@ export class Fighter {
     }
 
     if (this.state === 'dash') { this._updateDash(dt); return; }
-    if (this.state === 'attack') { this._updateAttack(dt, opp); this._bufferAndMove(dt, intent); return; }
+    if (this.state === 'attack') { this._updateAttack(dt, foes); this._bufferAndMove(dt, intent); return; }
 
     // --- 空中：受限水平操控，不可出招/格挡 ---
     if (this.y > 0) {
@@ -161,8 +165,8 @@ export class Fighter {
       else if (act === 'heavy') this._tryHeavy();
       else if (act === 'dash') this._tryDash(intent);
       else if (act === 'jump') this._tryJump();
-      else if (act === 's1') this._trySkill(0, opp, intent);
-      else if (act === 's2') this._trySkill(1, opp, intent);
+      else if (act === 's1') this._trySkill(0, foes, intent);
+      else if (act === 's2') this._trySkill(1, foes, intent);
     }
 
     // 格挡按住
@@ -222,6 +226,7 @@ export class Fighter {
   }
 
   _updateAttack(dt, opp) {
+    const foes = Array.isArray(opp) ? opp : [opp];
     const a = this.attack;
     a.t += dt;
     const d = a.data;
@@ -232,7 +237,11 @@ export class Fighter {
     } else if (a.phase === 'active') {
       this.x += this.vx * dt;
       this.vx *= (1 - 6 * dt);
-      if (!a.hitDone && this._checkHit(opp)) a.hitDone = true;
+      if (!a.hitDone) {                       // 接触帧横扫：范围内敌人全部吃这一击（2v2 可一扫双）
+        let hitAny = false;
+        for (const o of foes) if (this._checkHit(o)) hitAny = true;
+        if (hitAny) a.hitDone = true;
+      }
       if (a.t >= d.windup + d.active) a.phase = 'recovery';
     } else if (a.phase === 'recovery') {
       this.vx *= (1 - 9 * dt);
@@ -412,26 +421,30 @@ export class Fighter {
   }
 
   // 技能分发：按装配槽位（Q=槽0，E=槽1）。拒绝给玩家原因；目标不满足则静默不消耗。
+  // opp 可为单敌或敌列表（就近排序），需要目标的技能取首个满足条件者。
   _trySkill(slot, opp, intent) {
     if (!this.canAct()) return;
+    const foes = Array.isArray(opp) ? opp : [opp];
     const id = (this.mods.skills || [])[slot];
     if (!id) return;
     const sk = SKILLS[id];
     if (this.silenceT > 0) { this._deny('被沉默'); return; }
     if (this.cd['s' + (slot + 1)] > 0) { this._deny('冷却中'); return; }
     if (this.energy < sk.cost) { this._deny('能量不足'); return; }
+    let tgt = null;
     if (id === 'jam' || id === 'upper') {                  // 需要目标的技能：前置判定
-      const dist = Math.abs(opp.x - this.x);
-      const inFront = (opp.x - this.x) * this.facing > -40;
-      if (!opp.alive || dist > sk.range || !inFront) return;
-      if (id === 'jam' && opp.y > BASE.jump.dodgeH) return;  // 跳过头顶躲冲击波
+      tgt = foes.find(o => o.alive
+        && Math.abs(o.x - this.x) <= sk.range
+        && (o.x - this.x) * this.facing > -40
+        && !(id === 'jam' && o.y > BASE.jump.dodgeH));      // 跳过头顶躲冲击波
+      if (!tgt) return;
     }
     this.energy -= sk.cost;
     this.cd['s' + (slot + 1)] = sk.cd * this.mods.skillCdMul;
     this.pending = null;
     if (id === 'gale') this._doGale();
-    else if (id === 'jam') this._doJam(opp);
-    else if (id === 'upper') this._doUpper(opp);
+    else if (id === 'jam') this._doJam(tgt);
+    else if (id === 'upper') this._doUpper(tgt);
     else if (id === 'bulwark') this._doBulwark();
     else if (id === 'siphon') this._doSiphon();
     else if (id === 'shadow') this._doShadow(intent);
@@ -443,38 +456,44 @@ export class Fighter {
     this.events.push({ type: 'gale', owner: this });
   }
 
-  // 疾风余威大点：疾风结束时爆发地面冲击波（可跳跃越过）
+  // 疾风余威大点：疾风结束时爆发地面冲击波（可跳跃越过；2v2 范围内多人同时吃）
   _echo(opp) {
     this.galeEcho = false;
+    const foes = Array.isArray(opp) ? opp : [opp];
     const e = SKILLS.gale.echo;
     let connected = false, dealt = 0;
-    if (opp.alive && Math.abs(opp.x - this.x) <= e.range && opp.y <= BASE.jump.dodgeH) {
-      const res = opp.takeHit({
-        dmg: e.dmg, guard: e.guard, kb: e.kb, knockdown: false,
-        attacker: this, kind: 'jam', unblockable: false, source: this,
-      });
-      if (res.applied) {
-        connected = true;
-        dealt = res.dealt;
-        if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
+    for (const o of foes) {
+      if (o.alive && Math.abs(o.x - this.x) <= e.range && o.y <= BASE.jump.dodgeH) {
+        const res = o.takeHit({
+          dmg: e.dmg, guard: e.guard, kb: e.kb, knockdown: false,
+          attacker: this, kind: 'jam', unblockable: false, source: this,
+        });
+        if (res.applied) {
+          connected = true;
+          dealt += res.dealt;
+          if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
+        }
       }
     }
     this.events.push({ type: 'shock', owner: this, connected, dmg: dealt, x: this.x });
   }
 
-  // 落地震大点：落地瞬间震击近身敌人
+  // 落地震大点：落地瞬间震击近身敌人（2v2 范围内多人同时吃）
   _quake(opp) {
+    const foes = Array.isArray(opp) ? opp : [opp];
     const q = BASE.quake;
     let connected = false, dealt = 0;
-    if (opp.alive && Math.abs(opp.x - this.x) <= q.range && opp.y <= BASE.jump.dodgeH) {
-      const res = opp.takeHit({
-        dmg: q.dmg, guard: 0, kb: q.kb, knockdown: false,
-        attacker: this, kind: 'jam', unblockable: false, source: this,
-      });
-      if (res.applied) {
-        connected = true;
-        dealt = res.dealt;
-        if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
+    for (const o of foes) {
+      if (o.alive && Math.abs(o.x - this.x) <= q.range && o.y <= BASE.jump.dodgeH) {
+        const res = o.takeHit({
+          dmg: q.dmg, guard: 0, kb: q.kb, knockdown: false,
+          attacker: this, kind: 'jam', unblockable: false, source: this,
+        });
+        if (res.applied) {
+          connected = true;
+          dealt += res.dealt;
+          if (this.mods.lifesteal > 0 && res.dealt > 0) this.hp = Math.min(this.hpMax, this.hp + res.dealt * this.mods.lifesteal);
+        }
       }
     }
     this.events.push({ type: 'quake', owner: this, connected, dmg: dealt, x: this.x });

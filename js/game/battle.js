@@ -8,7 +8,14 @@ import { derive } from '../data/talents.js';
 import { SKILLS, normalizeLoadout } from '../data/skills.js';
 import { AudioFX } from '../core/audio.js';
 
-// 单场对战编排：阶段机（intro/fight/ko/over）、事件消费、胜负结算
+// 2v2 成员色：同色相区分席位（青=己方、红=敌方，亮色=你，淡色=队友/次席）
+// 你与首敌仍用 #3df2ff/#ff3c5f（与 CSS --acc/--foe 的契约色），HUD 淡色条与这里保持一致。
+const MATE_COLOR = '#7be9f8';
+const FOE2_COLOR = '#ff8093';
+
+// 对战编排：阶段机（intro/fight/ko/over）、事件消费、胜负结算
+// 支持两种编排：1v1（你 vs AI，联机时 foe 远端驱动）与 2v2（你 + AI 队友 vs 2 AI，仅本地）。
+// 实体统一走 this.fighters；this.player/this.foe 保留为 1v1 与联机序列化的稳定引用。
 export class Battle {
   constructor({ ctx, onFinish }) {
     this.ctx = ctx;
@@ -17,30 +24,66 @@ export class Battle {
     this.ann = null;
     this.clock = 0;
     this.player = null;
+    this.mode = '1v1';   // reset 时按 team 参数置位
     this.net = false;      // 联机标志（reset 时置位）：foe 远端驱动 + 事件外发
   }
 
   // 每局开打前调用（也用于再战重开）。net=true 为联机局：foe 由远端驱动，不跑 AI。
-  reset({ playerBuild, playerSkills, aiName, aiBuild, diffParams, diff, net = false }) {
+  // team={mate,foes:[a,b]} 时为 2v2 阵容（三名 AI 皆由天赋预设抽取，见 aiBuilds.teamLineup）。
+  reset({ playerBuild, playerSkills, aiName, aiBuild, diffParams, diff, net = false, team = null }) {
     this.playerBuild = playerBuild;
     this.aiName = aiName;
     this.aiBuildData = aiBuild;
     this.diff = diff;
     this.diffParams = diffParams;
     this.net = net;
+    this.mode = team ? '2v2' : '1v1';
 
     const pMods = derive(playerBuild);
-    const fMods = derive(aiBuild.build);
     pMods.skills = normalizeLoadout(playerSkills);       // 玩家装配（天赋页保存）
-    fMods.skills = normalizeLoadout(aiBuild.skills);     // AI 按预设流派配技能
-    this.player = new Fighter({ name: '挑战者', color: '#3df2ff', mods: pMods, isPlayer: true });
-    this.foe = new Fighter({ name: aiName, color: '#ff3c5f', mods: fMods, isPlayer: false });
+    this.player = new Fighter({ name: '挑战者', color: '#3df2ff', mods: pMods, isPlayer: true, team: 1 });
+
+    const modsOf = (slot) => {
+      const m = derive(slot.build);
+      m.skills = normalizeLoadout(slot.skills);          // AI 按预设流派配技能
+      return m;
+    };
+    if (team) {
+      // 2v2：左簇=你+队友（青系），右簇=双敌（红系）
+      this.mate = new Fighter({ name: team.mate.name, color: MATE_COLOR, mods: modsOf(team.mate), isPlayer: false, team: 1 });
+      this.foe = new Fighter({ name: team.foes[0].name, color: '#ff3c5f', mods: modsOf(team.foes[0]), isPlayer: false, team: 2 });
+      this.foe2 = new Fighter({ name: team.foes[1].name, color: FOE2_COLOR, mods: modsOf(team.foes[1]), isPlayer: false, team: 2 });
+      this.fighters = [this.player, this.mate, this.foe, this.foe2];
+      this.teamA = [this.player, this.mate];
+      this.teamB = [this.foe, this.foe2];
+    } else {
+      this.mate = null;
+      this.foe2 = null;
+      const fMods = derive(aiBuild.build);
+      fMods.skills = normalizeLoadout(aiBuild.skills);
+      this.foe = new Fighter({ name: aiName, color: '#ff3c5f', mods: fMods, isPlayer: false, team: 2 });
+      this.fighters = [this.player, this.foe];
+      this.teamA = [this.player];
+      this.teamB = [this.foe];
+    }
+    // AI 脑：每名 AI 一个；this.ai 保留为 1v1 对手脑的稳定引用
+    this.brains = new Map();
     this.ai = new AIBrain(this.foe, this.player, diffParams.ai);
+    this.brains.set(this.foe, this.ai);
+    if (this.mate) this.brains.set(this.mate, new AIBrain(this.mate, this.foe, diffParams.ai));
+    if (this.foe2) this.brains.set(this.foe2, new AIBrain(this.foe2, this.player, diffParams.ai));
     this.fx.clear();
     this.fx.quality = this.fxQuality || 'high';
 
-    this.player.reset(ARENA.W / 2 - 170, 1);
-    this.foe.reset(ARENA.W / 2 + 170, -1);
+    if (team) {
+      this.player.reset(ARENA.W / 2 - 260, 1);
+      this.mate.reset(ARENA.W / 2 - 110, 1);
+      this.foe.reset(ARENA.W / 2 + 110, -1);
+      this.foe2.reset(ARENA.W / 2 + 260, -1);
+    } else {
+      this.player.reset(ARENA.W / 2 - 170, 1);
+      this.foe.reset(ARENA.W / 2 + 170, -1);
+    }
 
     this.phase = 'intro';
     this.pt = 0;
@@ -82,8 +125,7 @@ export class Battle {
       this.pt += dt;
       this.fx.update(dt);
       const wdt = dt * this.scale;
-      this._moveDead(this.player, wdt);
-      this._moveDead(this.foe, wdt);
+      for (const f of this.fighters) this._moveDead(f, wdt);
       if (this.pt >= BASE.koHold) this._finish();
       return;
     }
@@ -111,14 +153,37 @@ export class Battle {
     if (this.fCombo.t <= 0) this.fCombo.n = 0;
 
     const pIntent = this.inputOn ? input.pIntent() : { axis: 0, actions: [], block: false };
-    // 联机局 foe 意图来自远端访客（input.fIntent）；否则本地 AI
-    const fIntent = input.fIntent ? input.fIntent() : this.ai.update(wdt);
+    const fIntent = input.fIntent ? input.fIntent() : null;   // 联机：对手意图来自远端访客
 
-    this.player.update(wdt, this.foe, pIntent);
-    this.foe.update(wdt, this.player, fIntent);
+    for (const f of this.fighters) {
+      if (!f.alive) continue;                                 // 倒地者不出招（尸体物理走 _moveDead）
+      let intent;
+      if (f.isPlayer) intent = pIntent;
+      else if (fIntent && f === this.foe) intent = fIntent;    // 1v1 联机对手
+      else {
+        const brain = this.brains.get(f);
+        brain.foe = this._nearestEnemy(f);                     // 目标随战局切换（就近）
+        intent = brain.update(wdt);
+      }
+      f.update(wdt, this._enemiesOf(f), intent);
+    }
     this._separate();
-    this._drain(this.player);
-    this._drain(this.foe);
+    for (const f of this.fighters) {
+      this._drain(f);
+      if (!f.alive) this._moveDead(f, wdt);   // 2v2 非终局倒地也要摔地滑行（1v1 此时已进 ko 阶段）
+    }
+  }
+
+  // 某角色的敌人列表：按就近排序（面向/技能取最近活敌）；全灭时退回原列表（终局帧兜底）
+  _enemiesOf(f) {
+    const enemies = f.team === 1 ? this.teamB : this.teamA;
+    const live = enemies.filter(e => e.alive);
+    const list = live.length ? live : enemies;
+    return list.slice().sort((a, b) => Math.abs(a.x - f.x) - Math.abs(b.x - f.x));
+  }
+
+  _nearestEnemy(f) {
+    return this._enemiesOf(f)[0];
   }
 
   _moveDead(f, dt) {
@@ -136,15 +201,21 @@ export class Battle {
   }
 
   _separate() {
-    const a = this.player, b = this.foe;
+    const fs = this.fighters;
     const min = BASE.bodyR * 2 - 6;
-    const d = b.x - a.x;
-    // 一方跳高时允许直接跨过对手（空越换位）
-    if (Math.abs(d) < min && a.alive && b.alive && a.y < 60 && b.y < 60) {
-      const push = (min - Math.abs(d)) / 2 * (d >= 0 ? 1 : -1);
-      a.x -= push; b.x += push;
+    for (let i = 0; i < fs.length; i++) {
+      for (let j = i + 1; j < fs.length; j++) {
+        const a = fs[i], b = fs[j];
+        if (!a.alive || !b.alive) continue;
+        const d = b.x - a.x;
+        // 一方跳高时允许直接跨过另一人（空越换位）
+        if (Math.abs(d) < min && a.y < 60 && b.y < 60) {
+          const push = (min - Math.abs(d)) / 2 * (d >= 0 ? 1 : -1);
+          a.x -= push; b.x += push;
+        }
+      }
     }
-    this._clamp(a); this._clamp(b);
+    for (const f of fs) this._clamp(f);
   }
 
   _clamp(f) {
@@ -307,6 +378,19 @@ export class Battle {
         fx.text(e.x, 466, e.msg, '#8b93ad', 19);
         break;
       case 'ko': {
+        if (this.phase === 'ko' || this.phase === 'over') break;   // 终局已定：忽略重复倒地
+        const team = e.loser.team === 1 ? this.teamA : this.teamB;
+        if (!team.every(f => !f.alive)) {
+          // 2v2 非终局倒地：全队未灭就继续打（1v1 单人队必然团灭，不会走到这）
+          AudioFX.play('ko');
+          fx.addShake(9);
+          fx.spark(e.x, 520, 0, '#ffd23f', 16, 460);
+          fx.comic(e.x, 440, '击倒!', '#ffd23f', 30);
+          this.crowdHeat = Math.min(1, this.crowdHeat + 0.35);
+          if (e.loser === this.player) this.setAnnounce('你被击倒了!', '', 2);
+          else if (this.mate && e.loser === this.mate) this.setAnnounce('队友被击倒!', '', 2);
+          break;
+        }
         AudioFX.play('ko');
         AudioFX.play('cheer');
         this.phase = 'ko';
@@ -328,7 +412,7 @@ export class Battle {
     if (this.phase === 'over') return;
     this.phase = 'over';
     this.scale = 1;
-    const win = this.koLoser !== this.player;
+    const win = this.koLoser.team !== this.player.team;   // 1v1：单人队等价于“倒的不是我”
     this.result = {
       win,
       time: this.matchT,
@@ -337,6 +421,7 @@ export class Battle {
       diff: this.diff,
       aiName: this.aiName,
       aiBuild: this.aiBuildData.name,
+      mode: this.mode,
     };
     AudioFX.play(win ? 'win' : 'lose');
     this.onFinish(this.result);
@@ -380,8 +465,9 @@ export class Battle {
     ctx.save();
     ctx.translate(sx, sy);
     drawArena(ctx, this.clock, this.crowdHeat);
-    // 角色（倒地/死亡的先画在下层）
-    const order = this.player.state === 'down' || this.player.state === 'dead' ? [this.player, this.foe] : [this.foe, this.player];
+    // 角色（倒地/死亡的先画在下层；你永远画在最上层）
+    const rank = f => (f.state === 'down' || f.state === 'dead') ? 0 : (f.isPlayer ? 2 : 1);
+    const order = this.fighters.slice().sort((a, b) => rank(a) - rank(b));
     for (const f of order) drawFighter(ctx, f, this.clock, this.fx);
     this.fx.render(ctx);
     if (this.phase === 'ko') drawKOLines(ctx, this.pt);
@@ -389,7 +475,7 @@ export class Battle {
   }
 
   snapshot() {
-    return {
+    const snap = {
       phase: this.phase,
       p: this.player.snapshot(),
       f: this.foe.snapshot(),
@@ -402,6 +488,11 @@ export class Battle {
       aiBuild: this.aiBuildData.name,
       matchT: this.matchT,
     };
+    if (this.mode === '2v2') {                 // 1v1 快照结构保持原样（联机契约）
+      snap.mate = this.mate.snapshot();
+      snap.foe2 = this.foe2.snapshot();
+    }
+    return snap;
   }
 }
 

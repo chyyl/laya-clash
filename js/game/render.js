@@ -45,7 +45,7 @@ function pose(f, t) {
     p.handF = [20, -78]; p.elbowF = [16, -66];
     p.handB = [24, -66]; p.elbowB = [10, -60];
     p.footF = [24, 0]; p.footB = [-22, 0];
-  } else if (st === 'attack') {
+  } else if (st === 'attack' && f.attack) {
     const a = f.attack;
     const d = a.data;
     let ext = 0;

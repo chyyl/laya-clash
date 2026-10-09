@@ -29,6 +29,15 @@ export function rotateBuild(diffId, rotation) {
   return aiBuild(list[rotation % list.length]);
 }
 
+// 2v2 阵容：三名 AI（队友 + 两名对手）从难度流派池逐槽抽取、互不重复。
+// 各槽相对同一 rotation 偏移取模，换场即整组轮换；池至少 3 档（rookie=3）。
+export function teamLineup(diffId, rotation) {
+  const list = DIFFICULTIES[diffId].builds;
+  const n = list.length;
+  const at = (off) => aiBuild(list[(((rotation % n) + n) % n + off) % n]);
+  return { mate: at(0), foes: [at(1), at(2)] };
+}
+
 export const DIFFICULTIES = {
   rookie: {
     id: 'rookie', tier: 'T1', name: '新手挑战者',

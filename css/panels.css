@@ -127,6 +127,8 @@
 .seg button{font-family:var(--f-cn);font-size:13px;font-weight:700;letter-spacing:.1em;padding:8px 16px;color:var(--dim);transition:.14s}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--acc);color:#0a0b0f}
+.mode-seg{align-self:center}
+.mode-seg button{padding:7px 15px;font-size:12.5px;letter-spacing:.08em}
 .set-danger{border-color:rgba(255,60,95,.35)}
 
 /* ============ 战绩 ============ */

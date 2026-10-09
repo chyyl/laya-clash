@@ -29,6 +29,10 @@
           <div class="mini-bar guard" title="格挡值"><i id="pgd-fill"></i></div>
         </div>
       </div>
+      <div class="hp-block mine ally hidden" id="mate-block">
+        <div class="hp-name"><span class="tag-dot"></span>队友 <em id="hud-mname">均衡流</em></div>
+        <div class="hp-bar"><div id="mhp-fill" class="hp-fill"></div></div>
+      </div>
       <div class="hud-center">
         <div id="hud-streak" class="streak-chip hidden">连胜 0</div>
         <button id="btn-pause" class="btn-icon" aria-label="暂停">II</button>
@@ -40,6 +44,10 @@
           <div class="mini-bar energy"><i id="een-fill"></i></div>
           <div class="mini-bar guard"><i id="egd-fill"></i></div>
         </div>
+      </div>
+      <div class="hp-block foe foe2 hidden" id="foe2-block">
+        <div class="hp-name"><span class="tag-dot"></span><em id="hud-f2name">猛攻流</em></div>
+        <div class="hp-bar"><div id="f2hp-fill" class="hp-fill"></div></div>
       </div>
     </div>
 
@@ -107,7 +115,11 @@
     <div class="screen-head">
       <button class="btn-back" data-go="menu">&larr; 返回</button>
       <h2>选择对手</h2>
-      <div class="head-note">对手会轮换不同流派的天赋装配</div>
+      <div class="seg mode-seg" id="mode-seg">
+        <button data-mode="1v1" class="on">单挑 1v1</button>
+        <button data-mode="2v2">组队 2v2</button>
+      </div>
+      <div class="head-note" id="diff-note">对手会轮换不同流派的天赋装配</div>
     </div>
     <div class="diff-cards">
       <button class="diff-card" data-diff="rookie">
@@ -173,7 +185,7 @@
     <div class="screen-head">
       <button class="btn-back" data-go="menu">&larr; 返回</button>
       <h2>教程</h2>
-      <div class="head-note" id="tut-page-label">1/4</div>
+      <div class="head-note" id="tut-page-label">1/5</div>
     </div>
     <div class="tut-frame">
       <div id="tut-body" class="tut-body"><!-- JS --></div>

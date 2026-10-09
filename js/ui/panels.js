@@ -87,6 +87,11 @@ export function renderRecords() {
     if (!p || p.w + p.l <= 0) return '';
     const t = p.w + p.l, wr = Math.round(p.w / t * 100);
     return `<tr><td>PVP · 联机对战</td><td>${t}</td><td class="win">${p.w}</td><td>${p.l}</td><td>${wr}%</td></tr>`;
+  })() + (() => {                             // 2v2 团战单独一行（perMode 分账，不与难度行混算）
+    const p = (r.perMode || {})['2v2'];
+    if (!p || p.w + p.l <= 0) return '';
+    const t = p.w + p.l, wr = Math.round(p.w / t * 100);
+    return `<tr><td>2V2 · 组队鏖战</td><td>${t}</td><td class="win">${p.w}</td><td>${p.l}</td><td>${wr}%</td></tr>`;
   })();
 
   $('records-body').innerHTML = `
@@ -147,6 +152,17 @@ const PAGES = [
         <li><b>天赋</b>：15 点数分入攻击 / 生存 / 机动 / 能量四系，再选 2 个关键大点。</li>
         <li>局前随时可改，打不过就换一套；四个快速方案可一键装配。</li>
         <li>对手也在轮换不同的流派装配——同屏力拼，输赢全看操作。</li>
+      </ul>`,
+  },
+  {
+    title: '组队 2v2',
+    html: `
+      <ul>
+        <li>难度页顶部切换 <b>单挑 1v1 / 组队 2v2</b>：2v2 里你与一名 AI 队友并肩，对战两名 AI 对手，四人同场。</li>
+        <li>三名 AI 的流派从该难度的预设池逐槽抽取、互不重复——<b>对手完全由天赋配置决定</b>，换场自动轮换。</li>
+        <li>先歼灭敌方全队者获胜；你倒下后队友会替你打完，反之亦然。</li>
+        <li>攻击会横扫范围内所有敌人，贴身一打二很痛，但也容易被夹。</li>
+        <li>联机对战目前仅支持单挑 1v1；2v2 战绩单独记账。</li>
       </ul>`,
   },
 ];
