@@ -1,0 +1,19 @@
+- generic [active] [ref=f6e1]:
+  - generic:
+    - generic [ref=f6e3]: 100/146
+    - generic [ref=f6e7]:
+      - generic [ref=f6e8]:
+        - generic [ref=f6e9]: ⚔️
+        - generic: Q
+      - generic [ref=f6e10]:
+        - generic [ref=f6e11]: 💨
+        - generic: E
+      - generic [ref=f6e12]:
+        - generic [ref=f6e13]: "?"
+        - generic: R
+      - generic [ref=f6e14]:
+        - generic [ref=f6e15]: "?"
+        - generic: F
+    - generic:
+      - generic: Lv.1
+      - generic: "金币: 7"

@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic [ref=e3]: 130/130
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: ⚔️
+        - generic: Q
+      - generic [ref=e10]:
+        - generic [ref=e11]: 💨
+        - generic: E
+      - generic [ref=e12]:
+        - generic [ref=e13]: "?"
+        - generic: R
+      - generic [ref=e14]:
+        - generic [ref=e15]: "?"
+        - generic: F
+    - generic:
+      - generic: Lv.1
+      - generic: "金币: 22"
+    - generic [ref=e16]:
+      - generic [ref=e17]: "[error] 你已阵亡，3 秒后在城镇复活"
+      - generic [ref=e18]: "[info] 你在城镇中复活了"
+      - generic [ref=e19]: "[error] 你已阵亡，3 秒后在城镇复活"
+      - generic [ref=e20]: "[info] 你在城镇中复活了"

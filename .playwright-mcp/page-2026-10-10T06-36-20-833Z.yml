@@ -1,0 +1,114 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e3]:
+    - generic [ref=f2e4]: LEGEND MAPPER
+    - generic [ref=f2e5]:
+      - button "画笔" [ref=f2e6] [cursor=pointer]
+      - button "矩形" [ref=f2e7] [cursor=pointer]
+      - button "填充" [ref=f2e8] [cursor=pointer]
+      - button "橡皮" [ref=f2e9] [cursor=pointer]
+      - button "对象" [ref=f2e10] [cursor=pointer]
+      - button "平移" [ref=f2e11] [cursor=pointer]
+    - generic [ref=f2e12]:
+      - button "地面层" [ref=f2e13] [cursor=pointer]
+      - button "覆盖层" [ref=f2e14] [cursor=pointer]
+      - button "碰撞层" [ref=f2e15] [cursor=pointer]
+    - generic [ref=f2e16]:
+      - generic [ref=f2e17] [cursor=pointer]:
+        - checkbox "网格" [checked] [ref=f2e18]
+        - text: 网格
+      - generic [ref=f2e19] [cursor=pointer]:
+        - checkbox "碰撞叠色" [ref=f2e20]
+        - text: 碰撞叠色
+    - generic [ref=f2e21]:
+      - button "撤销" [ref=f2e22] [cursor=pointer]
+      - button "重做" [ref=f2e23] [cursor=pointer]
+      - link "游戏" [ref=f2e24] [cursor=pointer]:
+        - /url: index.html
+  - generic [ref=f2e25]:
+    - generic [ref=f2e26]:
+      - text: 瓦片
+      - generic [ref=f2e27]: 数字 1-8
+    - generic [ref=f2e28]:
+      - generic "1 草地" [ref=f2e29] [cursor=pointer]: "1"
+      - generic "2 森林地表" [ref=f2e32] [cursor=pointer]: "2"
+      - generic "3 洞穴地表" [ref=f2e35] [cursor=pointer]: "3"
+      - generic "4 废墟地表" [ref=f2e38] [cursor=pointer]: "4"
+      - generic "5 灰石" [ref=f2e41] [cursor=pointer]: "5"
+      - generic "6 深渊" [ref=f2e44] [cursor=pointer]: "6"
+      - generic "7 苔石" [ref=f2e47] [cursor=pointer]: "7"
+      - generic "8 虚空" [ref=f2e50] [cursor=pointer]: "8"
+    - generic [ref=f2e53]: 对象类型
+    - generic [ref=f2e54]:
+      - button "刷怪点" [ref=f2e55] [cursor=pointer]
+      - button "传送门" [ref=f2e56] [cursor=pointer]
+      - button "NPC" [ref=f2e57] [cursor=pointer]
+      - button "宝箱" [ref=f2e58] [cursor=pointer]
+      - button "树" [ref=f2e59] [cursor=pointer]
+      - button "岩石" [ref=f2e60] [cursor=pointer]
+      - button "灌木" [ref=f2e61] [cursor=pointer]
+      - button "水晶" [ref=f2e62] [cursor=pointer]
+      - button "树桩" [ref=f2e63] [cursor=pointer]
+      - button "帐篷" [ref=f2e64] [cursor=pointer]
+      - button "木屋" [ref=f2e65] [cursor=pointer]
+      - button "瞭望塔" [ref=f2e66] [cursor=pointer]
+      - button "石柱" [ref=f2e67] [cursor=pointer]
+      - button "祭坛" [ref=f2e68] [cursor=pointer]
+      - button "篝火" [ref=f2e69] [cursor=pointer]
+      - button "旗杆" [ref=f2e70] [cursor=pointer]
+    - generic [ref=f2e71]:
+      - text: 笔刷大小
+      - generic [ref=f2e72]: "[ ]"
+    - generic [ref=f2e73]:
+      - button "1x1" [ref=f2e74] [cursor=pointer]
+      - button "2x2" [ref=f2e75] [cursor=pointer]
+      - button "3x3" [ref=f2e76] [cursor=pointer]
+    - generic [ref=f2e77]: 操作提示
+    - generic [ref=f2e78]: 左键：绘制/选择 中键或空格+拖：平移 滚轮：缩放（以光标为锚） Del：删除选中对象 Ctrl+Z / Ctrl+Y：撤销重做 右侧面板可程序生成大地图
+  - generic [ref=f2e79]:
+    - generic [ref=f2e80]: 程序生成
+    - generic [ref=f2e81]:
+      - text: 预设
+      - combobox "预设" [ref=f2e82]:
+        - option "region 大区域（多生物群系+道路+营地）" [selected]
+        - option "forest 森林（林间空地+树海边界）"
+        - option "cave 洞穴（噪声洞窟+连通保证）"
+        - option "ruins 废墟（残垣结构+庭院）"
+        - option "blank 空白（全草地手绘）"
+    - generic [ref=f2e83]:
+      - text: 尺寸
+      - combobox "尺寸" [ref=f2e84]:
+        - option "64 x 64"
+        - option "128 x 128"
+        - option "256 x 256"
+        - option "512 x 512"
+        - option "1000 x 1000" [selected]
+    - generic [ref=f2e85]:
+      - generic [ref=f2e86]:
+        - text: 种子
+        - spinbutton "种子" [ref=f2e87]: "1"
+      - button "掷" [ref=f2e88] [cursor=pointer]
+    - generic [ref=f2e89] [cursor=pointer]:
+      - checkbox "生成时替换对象列表" [checked] [ref=f2e90]
+      - text: 生成时替换对象列表
+    - button "生成地图" [ref=f2e91] [cursor=pointer]
+    - generic [ref=f2e92]: 文件
+    - generic [ref=f2e93]:
+      - text: 打开
+      - combobox "打开" [ref=f2e94]:
+        - option "-- 打开 --" [selected]
+        - option "town"
+        - option "forest"
+        - option "cave"
+        - option "ruins"
+    - generic [ref=f2e95]:
+      - button "存到浏览器" [ref=f2e96] [cursor=pointer]
+      - button "导出 JSON" [ref=f2e97] [cursor=pointer]
+    - generic [ref=f2e98]:
+      - button "导入文件" [ref=f2e99] [cursor=pointer]
+      - button "试玩" [ref=f2e100] [cursor=pointer]
+    - button "重命名当前文档" [ref=f2e101] [cursor=pointer]
+    - generic [ref=f2e102]: 选中对象
+    - generic [ref=f2e103]: 未选中（对象工具下点击地图标记）
+    - generic [ref=f2e104]: 信息
+  - generic [ref=f2e105]: 坐标 - | 瓦片 1 草地 | 笔刷 1x1 | 缩放 1.00 | 对象 140 | 撤销 0
+  - generic [ref=f2e107]: 铺设道路

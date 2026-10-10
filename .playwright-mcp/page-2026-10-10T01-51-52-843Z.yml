@@ -1,0 +1,78 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic [ref=e3]: 100/100
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: "?"
+        - generic: Q
+      - generic [ref=e10]:
+        - generic [ref=e11]: "?"
+        - generic: E
+      - generic [ref=e12]:
+        - generic [ref=e13]: "?"
+        - generic: R
+      - generic [ref=e14]:
+        - generic [ref=e15]: "?"
+        - generic: F
+    - generic:
+      - generic: Lv.1
+      - generic: "金币: 0"
+    - generic [ref=e17]:
+      - heading "背包" [level=3] [ref=e18]
+      - button "×" [ref=e19] [cursor=pointer]
+      - generic [ref=e20]:
+        - button "装备" [ref=e21]
+        - button "背包" [ref=e22]
+        - button "商店" [ref=e23]
+    - generic [ref=e24]:
+      - heading "天赋树" [level=3] [ref=e25]
+      - button "×" [ref=e26] [cursor=pointer]
+      - generic [ref=e27]:
+        - generic [ref=e28]: "天赋点: 0"
+        - button "重置 (100金币/点)" [ref=e29] [cursor=pointer]
+    - generic [ref=e31]:
+      - heading "任务日志" [level=3] [ref=e32]
+      - button "×" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - button "主线" [ref=e35]
+        - button "支线" [ref=e36]
+        - button "已完成" [ref=e37]
+    - generic [ref=e38]:
+      - heading "城镇" [level=3] [ref=e39]
+      - button "×" [ref=e40] [cursor=pointer]
+    - generic [ref=e41]:
+      - heading "多人游戏" [level=3] [ref=e42]
+      - button "×" [ref=e43] [cursor=pointer]
+      - generic [ref=e44]:
+        - heading "房间码" [level=3] [ref=e45]
+        - generic [ref=e46]:
+          - textbox [ref=e47]
+          - button "复制" [ref=e48] [cursor=pointer]
+        - button "创建房间" [ref=e49] [cursor=pointer]
+        - generic [ref=e50]:
+          - textbox "输入房间码加入" [ref=e51]
+          - button "加入" [ref=e52] [cursor=pointer]
+    - generic [ref=e53]:
+      - heading "设置" [level=3] [ref=e54]
+      - button "×" [ref=e55] [cursor=pointer]
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - text: "音量:"
+          - slider "音量:" [ref=e58]: "0.5"
+        - generic [ref=e59]:
+          - text: "音乐:"
+          - slider "音乐:" [ref=e60]: "0.3"
+        - button "导出存档" [ref=e61] [cursor=pointer]
+        - button "导入存档" [ref=e62] [cursor=pointer]
+        - button "清空存档" [ref=e63] [cursor=pointer]
+        - generic [ref=e64]: "版本: 0.1.0"
+    - generic [ref=e66]:
+      - heading "选择你的阵营" [level=2] [ref=e67]
+      - paragraph [ref=e68]: 这个选择将决定你的初始装备、主线任务、NPC 态度和专属天赋。一旦选择无法更改，请慎重决定。
+      - generic [ref=e69]:
+        - button [ref=e70] [cursor=pointer]:
+          - strong [ref=e71]: 王国正统军
+          - text: 秩序·荣耀·守护 初始：铁剑、皮甲、生命药水×2 专属：力量/体质天赋减免
+        - button [ref=e72] [cursor=pointer]:
+          - strong [ref=e73]: 反抗军
+          - text: 自由·变革·希望 初始：长弓、疾风靴、法力药水 专属：敏捷/智力天赋减免
