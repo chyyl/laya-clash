@@ -1,0 +1,26 @@
+- generic [active] [ref=f13e1]:
+  - generic:
+    - generic [ref=f13e3]: 100/130
+    - generic [ref=f13e6]:
+      - generic [ref=f13e7]: Q
+      - generic [ref=f13e11]: E
+      - generic [ref=f13e15]: R
+      - generic [ref=f13e16]: F
+    - generic [ref=f13e17]:
+      - generic [ref=f13e18]: Lv.1
+      - generic [ref=f13e19]: "金币: 0"
+    - generic [ref=f13e20]: "[info] 发现新区域：晨曦草原"
+    - generic [ref=f13e22]:
+      - generic [ref=f13e23]: 反抗军的火种
+      - generic [ref=f13e24]: 会见反抗军首领凯恩
+    - button "设置与菜单" [ref=f13e25] [cursor=pointer]
+    - generic [ref=f13e29]:
+      - heading "地下城传奇" [level=1] [ref=f13e33]
+      - generic [ref=f13e34]: 王国与反抗军
+      - generic [ref=f13e35]:
+        - button "继续游戏" [ref=f13e36] [cursor=pointer]
+        - button "开始新游戏" [ref=f13e39] [cursor=pointer]
+        - button "联机大厅" [ref=f13e42] [cursor=pointer]
+        - button "地图编辑器" [ref=f13e45] [cursor=pointer]
+        - button "设置" [ref=f13e48] [cursor=pointer]
+      - generic [ref=f13e51]: WASD 移动 / 鼠标攻击 / M 世界地图 / P 设置

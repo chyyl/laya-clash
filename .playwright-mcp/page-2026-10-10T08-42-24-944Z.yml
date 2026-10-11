@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic [ref=e3]: 100/146
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]: ⚔️
+        - generic: Q
+      - generic [ref=e9]:
+        - generic [ref=e10]: 💨
+        - generic: E
+      - generic [ref=e11]:
+        - generic [ref=e12]: "?"
+        - generic: R
+      - generic [ref=e13]:
+        - generic [ref=e14]: "?"
+        - generic: F
+    - generic:
+      - generic: Lv.1
+      - generic: "金币: 0"
+    - generic [ref=e16]:
+      - generic [ref=e17]: 王国的召唤
+      - generic [ref=e18]: 向队长亚文报到

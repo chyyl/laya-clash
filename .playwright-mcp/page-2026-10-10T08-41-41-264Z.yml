@@ -1,0 +1,29 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - generic [ref=e3]: 100/100
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - generic [ref=e9]: "?"
+        - generic: Q
+      - generic [ref=e10]:
+        - generic [ref=e11]: "?"
+        - generic: E
+      - generic [ref=e12]:
+        - generic [ref=e13]: "?"
+        - generic: R
+      - generic [ref=e14]:
+        - generic [ref=e15]: "?"
+        - generic: F
+    - generic:
+      - generic: Lv.1
+      - generic: "金币: 0"
+    - generic [ref=e18]:
+      - heading "选择你的阵营" [level=2] [ref=e19]
+      - paragraph [ref=e20]: 这个选择将决定你的初始装备、主线任务、NPC 态度和专属天赋。一旦选择无法更改，请慎重决定。
+      - generic [ref=e21]:
+        - button [ref=e22] [cursor=pointer]:
+          - strong [ref=e23]: 王国正统军
+          - text: 秩序·荣耀·守护 初始：铁剑、皮甲、生命药水×2 专属：力量/体质天赋减免
+        - button [ref=e24] [cursor=pointer]:
+          - strong [ref=e25]: 反抗军
+          - text: 自由·变革·希望 初始：长弓、疾风靴、法力药水 专属：敏捷/智力天赋减免
